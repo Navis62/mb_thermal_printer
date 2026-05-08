@@ -5,10 +5,8 @@ from luma.core.interface.serial import i2c
 from luma.core.render import canvas
 from luma.oled.device import ssd1306 #imports of different modules
 from luma.core.legacy import text
-from fonts.ttf import FredokaOne
 from PIL import Image
 from PIL import ImageFont
-from PIL import ImageDraw
 import time
 
 #Button pins
@@ -18,31 +16,31 @@ BUTTON_3_PIN = 15
 
 cmc = 0 #cmc variable for tracking cmc
 
-p = Serial(devfile='/dev/serial0', baudrate=9600, bytesize=8, parity='N', stopbits=1, timeout=1.00, dsrdtr=True) #initilize thermal printer serial 
+p = Serial(devfile='/dev/serial0', baudrate=9600, bytesize=8, parity='N', stopbits=1, timeout=10.0) #initilize thermal printer serial 
 
 #initilize OLED screen serial ports, set communication and set font/size
 serial = i2c(port=1, address=0x3C) 
 device = ssd1306(serial)
-font16 = ImageFont.truetype(FredokaOne, 16) 
+font16 = ImageFont.truetype('/home/navis/.fonts/FredokaOne-Regular.ttf', 16) 
 
 def display_cmc(cmc):
-    """
-    Function to display cmc on screen
-    """
     with canvas(device) as draw:
-        draw.text((5, 30), "Current CMC: " + str(cmc), fill="white", font=font16)
+        draw.text((5, 30), "CCM Actuel : " + str(cmc), fill="white", font=font16)
         
 #display initial cmc = 0
 display_cmc(cmc) 
 
 def display_print_message(cmc):
-    """
-    Function to display print message
-    """
     with canvas(device) as draw:
-        draw.text((5, 0), "Printing", fill="white", font=font16)
-        draw.text((5, 30), "Current CMC: " + str(cmc), fill="white", font=font16)
-
+        draw.text((5, 0), "Impression", fill="white")#, font=font16)
+        draw.text((5, 30), "CCM Actuel : " + str(cmc), fill="white", font=font16)
+        
+def display_message(message):
+    with canvas(device) as draw:
+        draw.text((5, 30), str(message), fill="white", font=font16)
+    time.sleep(2)
+    display_cmc(cmc)
+        
 #ignore button warnings and set numbering mode to BOARD
 GPIO.setwarnings(False) 
 GPIO.setmode(GPIO.BOARD)
@@ -53,17 +51,20 @@ GPIO.setup(BUTTON_2_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 GPIO.setup(BUTTON_3_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 def print_random_image(cmc): #function to print image
-    path = '/home/pi/momir_basic/' + str(cmc) + '/'
+    path = '/home/navis/Desktop/momir/' + str(cmc) + '/'
     try:
         image_path = path + random.choice(os.listdir(path))
-        p.image(image_path)
+        print_image(image_path)
         p.textln("")
         p.textln("")
         p.textln("")
     except Exception as e:
         print("An error occurred:", e)
 
-#print_random_image(0)
+def print_image(image_path):
+    img = Image.open(image_path)
+    img = img.convert('1')
+    p.image(img)
 
 debounce_delay = 0.2  # Adjust this value as needed for your buttons
 
@@ -74,14 +75,14 @@ while True: # Run forever
             display_cmc(cmc)
             time.sleep(debounce_delay)  # Debounce delay
         else:
-            pass
-    if GPIO.input(BUTTON_2_PIN) == GPIO.LOW: #decrese CMC button
+            display_message("Trop haut, mec !")
+    if GPIO.input(BUTTON_2_PIN) == GPIO.LOW: #decrease CMC button
         if cmc > 0: #lowest cmc is 0 so we don't want to go negative
             cmc = cmc - 1
             display_cmc(cmc)
             time.sleep(debounce_delay)  # Debounce delay
         else:
-            pass
+            display_message("Mais t'es con ?")
     if GPIO.input(BUTTON_3_PIN) == GPIO.LOW: #printing button
         display_print_message(cmc)
         print_random_image(cmc)
