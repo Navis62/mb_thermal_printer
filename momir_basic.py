@@ -25,7 +25,7 @@ font16 = ImageFont.truetype('/home/navis/.fonts/FredokaOne-Regular.ttf', 16)
 
 def display_cmc(cmc):
     with canvas(device) as draw:
-        draw.text((5, 30), "CCM Actuel : " + str(cmc), fill="white", font=font16)
+        draw.text((5, 30), "Mana : " + str(cmc), fill="white", font=font16)
         
 #display initial cmc = 0
 display_cmc(cmc) 
@@ -33,7 +33,7 @@ display_cmc(cmc)
 def display_print_message(cmc):
     with canvas(device) as draw:
         draw.text((5, 0), "Impression", fill="white")#, font=font16)
-        draw.text((5, 30), "CCM Actuel : " + str(cmc), fill="white", font=font16)
+        draw.text((5, 30), "Mana : " + str(cmc), fill="white", font=font16)
         
 def display_message(message):
     with canvas(device) as draw:
@@ -62,13 +62,14 @@ def print_random_image(cmc): #function to print image
         print("An error occurred:", e)
 
 def print_image(image_path):
-    img = Image.open(image_path)
-    img = img.convert('1')
-    p.image(img)
+    with Image.open(image_path) as img:
+        img = img.convert('1')
+        p.image(img)
 
 debounce_delay = 0.2  # Adjust this value as needed for your buttons
 
 while True: # Run forever
+    time.sleep(0.05)  # Reduce CPU usage, prevent thermal throttling
     if GPIO.input(BUTTON_1_PIN) == GPIO.LOW: #increase CMC button
         if cmc < 16: #highest cmc is 16, so we don't want to go over that
             cmc = cmc + 1

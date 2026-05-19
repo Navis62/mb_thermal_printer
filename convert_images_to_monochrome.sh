@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Folder containing cmc folders which contain card images
-IMAGE_ROOT="path-to-folder-containing-cmc-image-folders"
+IMAGE_ROOT="/mnt/d/Projects/mb_thermal_printer"
 
 # Iterate through all subdirectories
 for dir in "${IMAGE_ROOT}"/*; do
