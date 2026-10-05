@@ -13,22 +13,40 @@ A step by step on how this was done is
 - Add python script to crontab startup so that it is automatically started when the Pi is powered on
 
 Description of files: <br />
-**update.sh** - All-in-one update script: downloads the latest AtomicCards.json from MTGJSON, fetches image URLs from Scryfall, downloads the images and converts them to monochrome BMP. Run this script to add new sets/extensions. Requires `curl`, `python3` (with `ijson` and `requests`) and `imagemagick`. <br />
+**settings.cfg.example** - Template configuration file. Copy to `settings.cfg` and set `IMAGES_DIR` (where card images are stored) and `DATA_DIR` (where intermediate data files are stored). `settings.cfg` is excluded from version control. <br />
+**update.sh** - All-in-one update script: reads `settings.cfg`, downloads the latest AtomicCards.json from MTGJSON, fetches image URLs from Scryfall, downloads only new card images and converts them to monochrome BMP. Requires `curl`, `python3` (with `ijson` and `requests`) and `imagemagick`. <br />
 **get_image_urls_from_scryfall.py** - Get URLs for the actual image files from Scryfall, uses the Scryfall API and creates a new JSON file for us <br />
 **download_images_from_scryfall.py** - Downloads the actual images into folders from Scryfalls database <br />
 **convert_images_to_monochrome.sh** - Converts the JPG files into monochrome BMP files, this needs to be run on a Linux installation with imagemagick <br />
 **momir_basic.py** - Actual python program that runs on the Pi for the printer <br />
+
+## Configuration
+
+Before running any script, copy the settings template and set the paths for your setup:
+
+```bash
+cp settings.cfg.example settings.cfg
+```
+
+Edit `settings.cfg`:
+
+```ini
+# Directory where card images are stored (one sub-folder per CMC)
+IMAGES_DIR=/home/pi/Desktop/momir
+
+# Directory where intermediate data files are stored (AtomicCards.json, creatures_image_urls.json)
+DATA_DIR=/home/pi/momir_data
+```
+
+`settings.cfg` is excluded from version control so it won't pollute the repository.
 
 ## Updating card images
 
 To fetch the latest cards (including new extensions), run the update script from the project directory:
 
 ```bash
-# Default: images are saved to ~/Desktop/momir
+# Reads paths from settings.cfg
 ./update.sh
-
-# Or specify a custom directory
-./update.sh --images-dir /path/to/momir
 ```
 
 The script will:

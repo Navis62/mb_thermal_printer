@@ -8,34 +8,29 @@
 #   4. Convertit les images en monochrome BMP pour l'imprimante thermique
 #
 # Prérequis :
+#   - settings.cfg (copier settings.cfg.example et adapter les chemins)
 #   - python3 avec les dépendances du projet (pip install ijson requests)
 #   - ImageMagick (convert)
 #   - curl
-#
-# Usage :
-#   ./update.sh [--images-dir <chemin>]
-#
-#   --images-dir : répertoire où télécharger les images (défaut : ~/Desktop/momir)
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-IMAGES_DIR="${HOME}/Desktop/momir"
+SETTINGS_FILE="${SCRIPT_DIR}/settings.cfg"
 
-# Parse arguments
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --images-dir)
-            IMAGES_DIR="$2"
-            shift 2
-            ;;
-        *)
-            echo "Option inconnue : $1"
-            echo "Usage : $0 [--images-dir <chemin>]"
-            exit 1
-            ;;
-    esac
-done
+if [ ! -f "${SETTINGS_FILE}" ]; then
+    echo "Erreur : settings.cfg introuvable."
+    echo "Copie settings.cfg.example vers settings.cfg et adapte les chemins."
+    exit 1
+fi
+
+# Load settings (strip section headers and comments, then evaluate key=value pairs)
+eval "$(grep -v '^\s*[#\[]' "${SETTINGS_FILE}" | grep '=')"
+
+if [ -z "${IMAGES_DIR}" ] || [ -z "${DATA_DIR}" ]; then
+    echo "Erreur : IMAGES_DIR et DATA_DIR doivent être définis dans settings.cfg."
+    exit 1
+fi
 
 echo "=== Mise à jour des cartes Momir Basic ==="
 echo "Répertoire des images : ${IMAGES_DIR}"
@@ -43,10 +38,10 @@ echo ""
 
 # 1. Télécharger le dernier AtomicCards.json depuis MTGJSON
 ATOMIC_CARDS_URL="https://mtgjson.com/api/v5/AtomicCards.json.gz"
-ATOMIC_CARDS_GZ="${SCRIPT_DIR}/AtomicCards.json.gz"
-ATOMIC_CARDS_JSON="${SCRIPT_DIR}/AtomicCards.json"
+ATOMIC_CARDS_GZ="${DATA_DIR}/AtomicCards.json.gz"
 
 echo "[1/4] Téléchargement d'AtomicCards.json depuis MTGJSON..."
+mkdir -p "${DATA_DIR}"
 curl -L --progress-bar -o "${ATOMIC_CARDS_GZ}" "${ATOMIC_CARDS_URL}"
 echo "Décompression..."
 gunzip -f "${ATOMIC_CARDS_GZ}"
@@ -56,17 +51,16 @@ echo ""
 # 2. Récupérer les URLs d'images depuis Scryfall
 echo "[2/4] Récupération des URLs d'images depuis Scryfall..."
 cd "${SCRIPT_DIR}"
-python3 get_image_urls_from_scryfall.py
-echo "URLs récupérées dans creatures_image_urls.json."
+python3 get_image_urls_from_scryfall.py --data-dir "${DATA_DIR}"
+echo "URLs récupérées dans ${DATA_DIR}/creatures_image_urls.json."
 echo ""
 
 # 3. Télécharger les images dans le répertoire cible
 echo "[3/4] Téléchargement des images dans ${IMAGES_DIR}..."
 mkdir -p "${IMAGES_DIR}"
-# Run from SCRIPT_DIR (where creatures_image_urls.json lives).
-# The script writes directly into IMAGES_DIR and skips cards whose BMP already exists.
-cd "${SCRIPT_DIR}"
-python3 download_images_from_scryfall.py --images-dir "${IMAGES_DIR}"
+# Run from SCRIPT_DIR; scripts read their input files from DATA_DIR.
+# The download script writes directly into IMAGES_DIR and skips cards whose BMP already exists.
+python3 download_images_from_scryfall.py --data-dir "${DATA_DIR}" --images-dir "${IMAGES_DIR}"
 echo "Images téléchargées."
 echo ""
 

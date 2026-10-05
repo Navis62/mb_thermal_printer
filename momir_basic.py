@@ -1,5 +1,5 @@
 from escpos.printer import Serial
-import os, random
+import os, random, configparser
 import RPi.GPIO as GPIO
 from luma.core.interface.serial import i2c
 from luma.core.render import canvas
@@ -8,6 +8,13 @@ from luma.core.legacy import text
 from PIL import Image
 from PIL import ImageFont
 import time
+
+# Load settings
+_config = configparser.RawConfigParser()
+_settings_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings.cfg')
+if not _config.read(_settings_path):
+    raise FileNotFoundError(f"settings.cfg not found at {_settings_path}. Copy settings.cfg.example and adjust the paths.")
+IMAGES_DIR = os.path.expanduser(_config.get('DEFAULT', 'IMAGES_DIR'))
 
 #Button pins
 BUTTON_1_PIN = 11  
@@ -51,7 +58,7 @@ GPIO.setup(BUTTON_2_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 GPIO.setup(BUTTON_3_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 def print_random_image(cmc): #function to print image
-    path = '/home/navis/Desktop/momir/' + str(cmc) + '/'
+    path = os.path.join(IMAGES_DIR, str(cmc), 'converted_files') + os.sep
     try:
         image_path = path + random.choice(os.listdir(path))
         print_image(image_path)

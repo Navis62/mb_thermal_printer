@@ -6,6 +6,11 @@ import json
 def parse_args():
     parser = argparse.ArgumentParser(description="Download card images from Scryfall.")
     parser.add_argument(
+        "--data-dir",
+        default=".",
+        help="Directory containing creatures_image_urls.json (default: current directory)."
+    )
+    parser.add_argument(
         "--images-dir",
         default=".",
         help="Root directory where CMC folders are created (default: current directory). "
@@ -59,6 +64,7 @@ def download_image(item, images_dir):
 
 if __name__ == "__main__":
     args = parse_args()
-    download_images_from_json('creatures_image_urls.json', images_dir=args.images_dir)
+    json_file = os.path.join(args.data_dir, 'creatures_image_urls.json')
+    download_images_from_json(json_file, images_dir=args.images_dir)
 
 
