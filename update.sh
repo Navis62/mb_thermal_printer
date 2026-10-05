@@ -66,7 +66,7 @@ mkdir -p "${IMAGES_DIR}"
 # Run download script from SCRIPT_DIR (where creatures_image_urls.json lives),
 # then move the generated CMC folders to IMAGES_DIR.
 cd "${SCRIPT_DIR}"
-python3 download_images_from_scryfall.py
+python3 download_images_from_scryfall.py --images-dir "${IMAGES_DIR}"
 # Move any newly created numeric CMC directories to IMAGES_DIR
 for cmc_dir in "${SCRIPT_DIR}"/*/; do
     cmc_name="$(basename "$cmc_dir")"
