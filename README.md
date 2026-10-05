@@ -13,10 +13,29 @@ A step by step on how this was done is
 - Add python script to crontab startup so that it is automatically started when the Pi is powered on
 
 Description of files: <br />
+**update.sh** - All-in-one update script: downloads the latest AtomicCards.json from MTGJSON, fetches image URLs from Scryfall, downloads the images and converts them to monochrome BMP. Run this script to add new sets/extensions. Requires `curl`, `python3` (with `ijson` and `requests`) and `imagemagick`. <br />
 **get_image_urls_from_scryfall.py** - Get URLs for the actual image files from Scryfall, uses the Scryfall API and creates a new JSON file for us <br />
 **download_images_from_scryfall.py** - Downloads the actual images into folders from Scryfalls database <br />
 **convert_images_to_monochrome.sh** - Converts the JPG files into monochrome BMP files, this needs to be run on a Linux installation with imagemagick <br />
 **momir_basic.py** - Actual python program that runs on the Pi for the printer <br />
+
+## Updating card images
+
+To fetch the latest cards (including new extensions), run the update script from the project directory:
+
+```bash
+# Default: images are saved to ~/Desktop/momir
+./update.sh
+
+# Or specify a custom directory
+./update.sh --images-dir /path/to/momir
+```
+
+The script will:
+1. Download the latest `AtomicCards.json` from MTGJSON
+2. Fetch image URLs from the Scryfall API
+3. Download card images into one folder per CMC value
+4. Convert images to monochrome BMP (skips files already converted)
 
 I used the following hardware <br />
 3x KY-004 Push Button  <br />
