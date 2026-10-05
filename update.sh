@@ -95,16 +95,14 @@ for dir in "${IMAGES_DIR}"/*/; do
         # Check for JPG files using find to avoid glob-expansion issues
         if find "$dir" -maxdepth 1 -name "*.jpg" | grep -q .; then
             mkdir -p "${dir}converted_files"
-            for jpg_file in "${dir}"*.jpg; do
-                if [ -f "$jpg_file" ]; then
-                    output_file="${dir}converted_files/$(basename -- "$jpg_file" .jpg).bmp"
-                    # Ne re-convertit pas les fichiers déjà existants
-                    if [ ! -f "$output_file" ]; then
-                        echo "Conversion : $jpg_file"
-                        convert "$jpg_file" -resize 384x -colorspace Gray -monochrome "$output_file"
-                    fi
+            while IFS= read -r jpg_file; do
+                output_file="${dir}converted_files/$(basename -- "$jpg_file" .jpg).bmp"
+                # Ne re-convertit pas les fichiers déjà existants
+                if [ ! -f "$output_file" ]; then
+                    echo "Conversion : $jpg_file"
+                    convert "$jpg_file" -resize 384x -colorspace Gray -monochrome "$output_file"
                 fi
-            done
+            done < <(find "$dir" -maxdepth 1 -name "*.jpg")
         fi
     fi
 done
