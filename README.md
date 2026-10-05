@@ -36,6 +36,9 @@ IMAGES_DIR=/home/pi/Desktop/momir
 
 # Directory where intermediate data files are stored (AtomicCards.json, creatures_image_urls.json)
 DATA_DIR=/home/pi/momir_data
+
+# Path to the TrueType font used by the OLED display
+FONT_PATH=/home/pi/mb_thermal_printer/FredokaOne-Regular.ttf
 ```
 
 `settings.cfg` is excluded from version control so it won't pollute the repository.

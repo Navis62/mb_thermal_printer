@@ -10,7 +10,12 @@
 IMAGES_DIR=/home/pi/Desktop/momir
 
 # Directory where intermediate data files are stored (AtomicCards.json,
-# creatures_image_urls.json). Using a path outside the repository keeps
-# large data files out of version control.
+# creatures_image_urls.json). Keeping this outside the repository avoids
+# committing large data files.
 # Example: /home/pi/momir_data
 DATA_DIR=/home/pi/momir_data
+
+# Path to the TrueType font used by the OLED display.
+# The bundled font can be referenced relative to the project directory.
+# Example: /home/pi/mb_thermal_printer/FredokaOne-Regular.ttf
+FONT_PATH=/home/pi/mb_thermal_printer/FredokaOne-Regular.ttf
