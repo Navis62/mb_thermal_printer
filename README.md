@@ -144,19 +144,3 @@ Add the following line:
 | `momir_basic.py` | Main program: runs on the Pi, reads buttons, drives the OLED and thermal printer |
 | `FredokaOne-Regular.ttf` | Font used by the OLED display |
 | `wiring.jpg` | Wiring reference diagram |
-
----
-
-## Arduino note
-
-This project started as an Arduino build but was abandoned because the QR204 thermal printer is incompatible with most common Arduino thermal printer libraries. If you use a different printer that works with Arduino, you will need to convert the BMP files to raw binary (PBM) instead:
-
-```bash
-mkdir -p ../binary_files
-
-for file in *.bmp; do
-    output_file="../binary_files/$(basename -- "$file" .bmp).pbm"
-    convert "$file" -threshold 50% -compress none pbm:- | \
-        awk 'NR>2 {print $0} END{if(NR%2!=0) print "0"}' > "$output_file"
-done
-```
