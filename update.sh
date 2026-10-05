@@ -75,11 +75,11 @@ for cmc_dir in "${SCRIPT_DIR}"/*/; do
         target="${IMAGES_DIR}/${cmc_name}"
         if [ -d "$target" ]; then
             # Merge: move individual files so we don't overwrite existing ones
-            find "$cmc_dir" -maxdepth 1 -name "*.jpg" | while read -r f; do
+            while IFS= read -r f; do
                 dest="${target}/$(basename "$f")"
                 [ -f "$dest" ] || mv "$f" "$dest"
-            done
-            rmdir --ignore-fail-on-non-empty "$cmc_dir"
+            done < <(find "$cmc_dir" -maxdepth 1 -name "*.jpg")
+            rm -rf "$cmc_dir"
         else
             mv "$cmc_dir" "$target"
         fi
