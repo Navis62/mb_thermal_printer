@@ -120,7 +120,7 @@ def print_random_card(printer, display, font16, cmc):
         printer.textln("")
     except Exception as e:
         logging.error("Print error: %s", e)
-        display_message(display, font16, f"Err: {e}", cmc)
+        display_message(display, font16, str(e)[:20], cmc)
 
 def _print_image(printer, image_path):
     """Send a single image to the thermal printer."""
@@ -133,7 +133,13 @@ def _print_image(printer, image_path):
 # ---------------------------------------------------------------------------
 
 def main():
-    printer, display, font16 = init_hardware()
+    try:
+        printer, display, font16 = init_hardware()
+    except Exception as e:
+        logging.critical("Hardware initialisation failed: %s", e)
+        GPIO.cleanup()
+        raise
+
     cmc = 0
     display_cmc(display, font16, cmc)
 
