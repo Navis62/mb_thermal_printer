@@ -8,6 +8,8 @@ A Raspberry Pi-powered thermal printer that plays [Momir Basic](https://mtg.fand
 
 ---
 
+---
+
 ## How it works
 
 1. Download the full card database (`AtomicCards.json`) from [MTGJSON](https://mtgjson.com)
