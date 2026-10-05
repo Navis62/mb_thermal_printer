@@ -22,17 +22,13 @@ I used the following hardware <br />
 3x KY-004 Push Button  <br />
 3x 1k OHM Resistors (optional, but will extend the lifetime of your buttons. They should be placed between the 3.3v and the button in that case) <br />
 1x 3 x 0.91" OLED 128 x 32 pixels I2C Screen <br />
-1x Raspberry Pi 4 <br />
+1x Raspberry Pi Zero 2 <br />
 1x QR204 Thermal Printer <br />
 1x 12V Female 2.1mm x 5.5mm DC Power Jack Adapter <br />
 1x 9v 2A Male DC Power Adapter <br />
 1x Power cable for Raspberry PI <br />
-1x Soldering Breadboard <br />
+1x 400-Point Breadboard Kit with Dupont Cable and Jumper Wire <br />
 1x 32gb micro SD card <br />
-Dupont Cables <br  />
-
-I started the project with the aim of using a Arduino UNO instead of the Raspberry PI, but after many hours of troubleshooting and retrying things I realized that my thermal printer simply was incompatible with most common thermal printer modules for the Arduino. <br /> <br /> I could never get it to print images no matter what I tried. So I ended up pivoting to the Rapsberry Pi instead. I am sure that you can get this to work on a Arduino with a compatible thermal printer, if so you probably want to use imagemagick to convert the monochrome images to BIN files instead, the code for that would look something like this
-
 
 # Convert to BIN example
 
