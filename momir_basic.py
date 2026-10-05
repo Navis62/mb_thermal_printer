@@ -58,9 +58,9 @@ GPIO.setup(BUTTON_2_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 GPIO.setup(BUTTON_3_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 def print_random_image(cmc): #function to print image
-    path = os.path.join(IMAGES_DIR, str(cmc), 'converted_files') + os.sep
+    path = os.path.join(IMAGES_DIR, str(cmc), 'converted_files')
     try:
-        image_path = path + random.choice(os.listdir(path))
+        image_path = os.path.join(path, random.choice(os.listdir(path)))
         print_image(image_path)
         p.textln("")
         p.textln("")

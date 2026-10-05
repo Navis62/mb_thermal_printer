@@ -24,8 +24,12 @@ if [ ! -f "${SETTINGS_FILE}" ]; then
     exit 1
 fi
 
-# Load settings (strip section headers and comments, then evaluate key=value pairs)
-eval "$(grep -v '^\s*[#\[]' "${SETTINGS_FILE}" | grep '=')"
+# Load settings: parse only known keys to avoid arbitrary code execution
+_get_setting() {
+    grep -v '^\s*[#\[]' "${SETTINGS_FILE}" | grep "^\s*$1\s*=" | tail -1 | cut -d'=' -f2- | tr -d '\r'
+}
+IMAGES_DIR="$(_get_setting IMAGES_DIR)"
+DATA_DIR="$(_get_setting DATA_DIR)"
 
 if [ -z "${IMAGES_DIR}" ] || [ -z "${DATA_DIR}" ]; then
     echo "Erreur : IMAGES_DIR et DATA_DIR doivent être définis dans settings.cfg."

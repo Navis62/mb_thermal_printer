@@ -41,7 +41,7 @@ def main():
 
     counter = 0 #scryfall supports 70 items in each payload
     payload_counter = 0 #keep track of how many api calls we send, mostly used to see that the script is working
-    payload = {'identifiers':[]} #identifier payload for scryfall api calll
+    payload = {'identifiers':[]} #identifier payload for scryfall api call
     creature_count = len(creatures)
     estimated_payloads = int(creature_count/70) + (creature_count % 70 > 0)
     image_urls = []

@@ -7,10 +7,10 @@
 # Directory where card images (JPG) and converted BMP files are stored.
 # One sub-folder per CMC value will be created here.
 # Example: /home/pi/Desktop/momir
-IMAGES_DIR=/home/navis/Desktop/momir
+IMAGES_DIR=/home/pi/Desktop/momir
 
 # Directory where intermediate data files are stored (AtomicCards.json,
 # creatures_image_urls.json). Using a path outside the repository keeps
 # large data files out of version control.
 # Example: /home/pi/momir_data
-DATA_DIR=/home/navis/momir_data
+DATA_DIR=/home/pi/momir_data
