@@ -36,7 +36,7 @@ def bmp_exists(images_dir, cmc, card_name):
     return os.path.isfile(bmp_path)
 
 
-def download_image(session, item, images_dir):
+def download_image(item, images_dir):
     """Download a single card image; return the card name on success or None on failure."""
     url  = item["image_url"]
     cmc  = int(item["cmc"])
@@ -47,10 +47,12 @@ def download_image(session, item, images_dir):
 
     save_path = os.path.join(directory, sanitise_name(name) + ".jpg")
     try:
-        response = session.get(url, timeout=30)
-        response.raise_for_status()
-        with open(save_path, 'wb') as f:
-            f.write(response.content)
+        # Each call creates its own session to avoid thread-safety issues
+        with requests.Session() as session:
+            response = session.get(url, timeout=30)
+            response.raise_for_status()
+            with open(save_path, 'wb') as f:
+                f.write(response.content)
         return name
     except Exception as e:
         print(f"Failed to download '{name}': {e}")
@@ -69,8 +71,8 @@ def download_images_from_json(json_file, images_dir):
     print(f"{len(to_download)} image(s) to download, {skipped} already converted (skipped).")
 
     downloaded = 0
-    with requests.Session() as session, ThreadPoolExecutor(max_workers=DOWNLOAD_WORKERS) as executor:
-        futures = {executor.submit(download_image, session, item, images_dir): item for item in to_download}
+    with ThreadPoolExecutor(max_workers=DOWNLOAD_WORKERS) as executor:
+        futures = {executor.submit(download_image, item, images_dir): item for item in to_download}
         for future in as_completed(futures):
             if future.result() is not None:
                 downloaded += 1

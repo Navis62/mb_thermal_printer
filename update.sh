@@ -95,16 +95,14 @@ if [ ${#JPG_FILES[@]} -eq 0 ]; then
     echo "No new images to convert."
 else
     echo "Converting ${#JPG_FILES[@]} image(s) in parallel..."
-    convert_image() {
-        jpg="$1"
+    printf '%s\n' "${JPG_FILES[@]}" | xargs -P "$(nproc)" -I{} bash -c '
+        jpg="{}"
         dir="$(dirname "$jpg")"
         name="$(basename "$jpg" .jpg)"
         out="${dir}/converted_files/${name}.bmp"
         mkdir -p "${dir}/converted_files"
         convert "$jpg" -resize 384x -colorspace Gray -monochrome "$out"
-    }
-    export -f convert_image
-    printf '%s\n' "${JPG_FILES[@]}" | xargs -P "$(nproc)" -I{} bash -c 'convert_image "$@"' _ {}
+    '
 fi
 
 echo "Conversion done."

@@ -25,7 +25,11 @@ def parse_args():
 
 
 def is_valid_creature(card_data):
-    """Return True if the card should be included (real creature, not Arena-only or Un-set)."""
+    """Return True if the card should be included (real creature, not Arena-only or Un-set).
+
+    Cards with names starting with "A-" are digital-only Arena reprints of existing cards
+    (e.g. "A-Lightning Bolt") and are intentionally excluded to avoid duplicates.
+    """
     return (
         "Creature" in card_data["type"]
         and card_data["legalities"]

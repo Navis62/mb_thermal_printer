@@ -56,6 +56,8 @@ display  = ssd1306(_serial)
 font16   = ImageFont.truetype(FONT_PATH, 16)
 
 # GPIO buttons
+# Wiring: buttons connect the pin to 3.3 V (active-high).
+# PUD_DOWN holds the line LOW by default; a button press pulls it HIGH.
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BOARD)
 for pin in (BUTTON_UP_PIN, BUTTON_DOWN_PIN, BUTTON_PRINT_PIN):
