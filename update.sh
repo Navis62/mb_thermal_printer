@@ -96,13 +96,13 @@ if [ ${#JPG_FILES[@]} -eq 0 ]; then
 else
     echo "Converting ${#JPG_FILES[@]} image(s) in parallel..."
     printf '%s\n' "${JPG_FILES[@]}" | xargs -P "$(nproc)" -I{} bash -c '
-        jpg="{}"
+        jpg="$1"
         dir="$(dirname "$jpg")"
         name="$(basename "$jpg" .jpg)"
         out="${dir}/converted_files/${name}.bmp"
         mkdir -p "${dir}/converted_files"
         convert "$jpg" -resize 384x -colorspace Gray -monochrome "$out"
-    '
+    ' _ {}
 fi
 
 echo "Conversion done."

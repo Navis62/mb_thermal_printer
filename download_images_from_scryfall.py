@@ -1,12 +1,23 @@
 import os
 import argparse
 import json
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 
 # Number of parallel download workers
 DOWNLOAD_WORKERS = 12
+
+# Thread-local storage for per-thread HTTP sessions
+_thread_local = threading.local()
+
+
+def _get_session():
+    """Return a requests.Session local to the current thread."""
+    if not hasattr(_thread_local, 'session'):
+        _thread_local.session = requests.Session()
+    return _thread_local.session
 
 
 def parse_args():
@@ -47,12 +58,11 @@ def download_image(item, images_dir):
 
     save_path = os.path.join(directory, sanitise_name(name) + ".jpg")
     try:
-        # Each call creates its own session to avoid thread-safety issues
-        with requests.Session() as session:
-            response = session.get(url, timeout=30)
-            response.raise_for_status()
-            with open(save_path, 'wb') as f:
-                f.write(response.content)
+        session = _get_session()
+        response = session.get(url, timeout=30)
+        response.raise_for_status()
+        with open(save_path, 'wb') as f:
+            f.write(response.content)
         return name
     except Exception as e:
         print(f"Failed to download '{name}': {e}")
