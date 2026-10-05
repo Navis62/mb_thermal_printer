@@ -2,6 +2,7 @@ import os
 import argparse
 import json
 import threading
+import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
@@ -61,9 +62,17 @@ def download_image(item, images_dir):
         session = _get_session()
         response = session.get(url, timeout=30, stream=True)
         response.raise_for_status()
-        with open(save_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
+        # Write to a temp file first; rename atomically on success to avoid
+        # leaving partial files that could be picked up by the printer.
+        tmp_fd, tmp_path = tempfile.mkstemp(dir=directory)
+        try:
+            with os.fdopen(tmp_fd, 'wb') as tmp_f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    tmp_f.write(chunk)
+            os.replace(tmp_path, save_path)
+        except Exception:
+            os.unlink(tmp_path)
+            raise
         return name
     except Exception as e:
         print(f"Failed to download '{name}': {e}")
