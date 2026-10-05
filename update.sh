@@ -26,7 +26,7 @@ fi
 
 # Load settings: parse only known keys to avoid arbitrary code execution
 _get_setting() {
-    grep -v '^\s*[#\[]' "${SETTINGS_FILE}" | grep "^\s*$1\s*=" | tail -1 | cut -d'=' -f2- | tr -d '\r'
+    grep -v '^\s*[#\[]' "${SETTINGS_FILE}" | grep "^\s*$1\s*=" | tail -1 | cut -d'=' -f2- | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
 }
 IMAGES_DIR="$(_get_setting IMAGES_DIR)"
 DATA_DIR="$(_get_setting DATA_DIR)"
