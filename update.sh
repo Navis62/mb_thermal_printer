@@ -63,28 +63,10 @@ echo ""
 # 3. Télécharger les images dans le répertoire cible
 echo "[3/4] Téléchargement des images dans ${IMAGES_DIR}..."
 mkdir -p "${IMAGES_DIR}"
-# Run download script from SCRIPT_DIR (where creatures_image_urls.json lives),
-# then move the generated CMC folders to IMAGES_DIR.
+# Run from SCRIPT_DIR (where creatures_image_urls.json lives).
+# The script writes directly into IMAGES_DIR and skips cards whose BMP already exists.
 cd "${SCRIPT_DIR}"
 python3 download_images_from_scryfall.py --images-dir "${IMAGES_DIR}"
-# Move any newly created numeric CMC directories to IMAGES_DIR
-for cmc_dir in "${SCRIPT_DIR}"/*/; do
-    cmc_name="$(basename "$cmc_dir")"
-    # Only move directories whose names are integers (CMC folders)
-    if [[ "$cmc_name" =~ ^[0-9]+$ ]]; then
-        target="${IMAGES_DIR}/${cmc_name}"
-        if [ -d "$target" ]; then
-            # Merge: move individual files so we don't overwrite existing ones
-            while IFS= read -r f; do
-                dest="${target}/$(basename "$f")"
-                [ -f "$dest" ] || mv "$f" "$dest"
-            done < <(find "$cmc_dir" -maxdepth 1 -name "*.jpg")
-            rm -rf "$cmc_dir"
-        else
-            mv "$cmc_dir" "$target"
-        fi
-    fi
-done
 echo "Images téléchargées."
 echo ""
 

@@ -7,18 +7,23 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Download card images from Scryfall.")
     parser.add_argument(
         "--images-dir",
-        default=None,
+        default=".",
         help="Root directory where CMC folders are created (default: current directory). "
-             "When provided, cards whose BMP already exists in <images-dir>/<cmc>/converted_files/ "
+             "Cards whose BMP already exists in <images-dir>/<cmc>/converted_files/ "
              "are skipped so only new cards are downloaded."
     )
     return parser.parse_args()
 
-def bmp_name(card_name):
-    """Return the expected BMP filename for a card, matching the naming in download_image()."""
-    return card_name.replace("'", "").replace('"', "").replace("/", "") + ".bmp"
+def sanitise_name(card_name):
+    """Sanitise a card name for use as a filename, matching the on-disk convention."""
+    return card_name.replace("'", "").replace('"', "").replace("/", "")
 
-def download_images_from_json(json_file, images_dir=None):
+def bmp_exists(images_dir, cmc, card_name):
+    """Return True if the converted BMP for this card already exists."""
+    bmp_path = os.path.join(images_dir, str(cmc), "converted_files", sanitise_name(card_name) + ".bmp")
+    return os.path.isfile(bmp_path)
+
+def download_images_from_json(json_file, images_dir):
     with open(json_file, 'r', encoding='utf-8') as file:
         data = json.load(file)
         skipped = 0
@@ -26,28 +31,25 @@ def download_images_from_json(json_file, images_dir=None):
         for item in data:
             cmc = int(item["cmc"])
             name = item["name"]
-            # If an images_dir is provided, skip cards that already have a BMP
-            if images_dir is not None:
-                expected_bmp = os.path.join(images_dir, str(cmc), "converted_files", bmp_name(name))
-                if os.path.isfile(expected_bmp):
-                    skipped += 1
-                    continue
-            download_image(item)
+            if bmp_exists(images_dir, cmc, name):
+                skipped += 1
+                continue
+            download_image(item, images_dir)
             downloaded += 1
         print(f"Done: {downloaded} image(s) downloaded, {skipped} skipped (BMP already exists).")
 
-def download_image(item):
+def download_image(item, images_dir):
     url = item["image_url"]
     cmc = int(item["cmc"])
     name = item["name"]
     
-    # Create directory if it doesn't exist
-    directory = str(cmc)
+    # Create CMC directory inside images_dir if it doesn't exist
+    directory = os.path.join(images_dir, str(cmc))
     if not os.path.exists(directory):
         os.makedirs(directory)
     
     # Construct save path, replacing special characters
-    save_path = os.path.join(directory, name.replace("'", "").replace('"', "").replace("/", "") + ".jpg")
+    save_path = os.path.join(directory, sanitise_name(name) + ".jpg")
     
     try:
         urllib.request.urlretrieve(url, save_path) 
@@ -57,4 +59,5 @@ def download_image(item):
 
 args = parse_args()
 download_images_from_json('creatures_image_urls.json', images_dir=args.images_dir)
+
 
