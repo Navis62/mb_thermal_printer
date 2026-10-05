@@ -126,17 +126,17 @@ def main():
             if cmc < CMC_MAX:
                 cmc += 1
                 display_cmc(cmc)
-                time.sleep(DEBOUNCE_DELAY)
             else:
                 display_message("Already at max!", cmc)
+            time.sleep(DEBOUNCE_DELAY)
 
         elif GPIO.input(BUTTON_DOWN_PIN) == GPIO.HIGH:
             if cmc > CMC_MIN:
                 cmc -= 1
                 display_cmc(cmc)
-                time.sleep(DEBOUNCE_DELAY)
             else:
                 display_message("Already at 0!", cmc)
+            time.sleep(DEBOUNCE_DELAY)
 
         elif GPIO.input(BUTTON_PRINT_PIN) == GPIO.HIGH:
             display_printing(cmc)

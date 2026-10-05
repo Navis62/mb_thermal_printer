@@ -27,11 +27,9 @@ def parse_args():
 def is_valid_creature(card_data):
     """Return True if the card should be included (real creature, not Arena-only or Un-set).
 
-    Cards with names starting with "A-" are digital-only Arena reprints of existing cards
-    (e.g. "A-Lightning Bolt") and are intentionally excluded to avoid duplicates.
-    Note: using startswith("A-") is deliberately more precise than the original
-    'not in' check — it only excludes cards prefixed with "A-", not any card
-    whose name happens to contain that substring.
+    Arena digital-only reprints are prefixed with "A-" (e.g. "A-Lightning Bolt").
+    Using startswith("A-") correctly targets only these prefixed names, avoiding
+    false exclusions for cards that happen to contain "A-" elsewhere in their name.
     """
     return (
         "Creature" in card_data["type"]

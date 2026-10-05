@@ -59,10 +59,11 @@ def download_image(item, images_dir):
     save_path = os.path.join(directory, sanitise_name(name) + ".jpg")
     try:
         session = _get_session()
-        response = session.get(url, timeout=30)
+        response = session.get(url, timeout=30, stream=True)
         response.raise_for_status()
         with open(save_path, 'wb') as f:
-            f.write(response.content)
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
         return name
     except Exception as e:
         print(f"Failed to download '{name}': {e}")
