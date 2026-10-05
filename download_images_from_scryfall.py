@@ -57,7 +57,8 @@ def download_image(item, images_dir):
     except Exception as e:
         print(f"Failed to download {name}: {e}")
 
-args = parse_args()
-download_images_from_json('creatures_image_urls.json', images_dir=args.images_dir)
+if __name__ == "__main__":
+    args = parse_args()
+    download_images_from_json('creatures_image_urls.json', images_dir=args.images_dir)
 
 
