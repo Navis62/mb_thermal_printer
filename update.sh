@@ -108,5 +108,31 @@ fi
 echo "Conversion done."
 echo ""
 
+# ---------------------------------------------------------------------------
+# 5. Clean up temporary files
+# ---------------------------------------------------------------------------
+echo "[5/5] Cleaning up temporary files..."
+
+# Remove downloaded JPGs now that they have been converted to BMP
+find "${IMAGES_DIR}" -mindepth 2 -maxdepth 2 -name "*.jpg" -delete
+echo "JPG files removed."
+
+# Remove AtomicCards.json (large file, only needed during this run)
+ATOMIC_CARDS_JSON="${DATA_DIR}/AtomicCards.json"
+if [ -f "${ATOMIC_CARDS_JSON}" ]; then
+    rm -f "${ATOMIC_CARDS_JSON}"
+    echo "AtomicCards.json removed."
+fi
+
+# Remove creatures_image_urls.json (regenerated on every run)
+CREATURES_JSON="${DATA_DIR}/creatures_image_urls.json"
+if [ -f "${CREATURES_JSON}" ]; then
+    rm -f "${CREATURES_JSON}"
+    echo "creatures_image_urls.json removed."
+fi
+
+echo "Cleanup done."
+echo ""
+
 echo "=== Update complete! ==="
 echo "Converted images are in ${IMAGES_DIR}/<cmc>/converted_files/"
