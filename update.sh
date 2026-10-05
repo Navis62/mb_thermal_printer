@@ -63,27 +63,49 @@ echo ""
 # 3. Télécharger les images dans le répertoire cible
 echo "[3/4] Téléchargement des images dans ${IMAGES_DIR}..."
 mkdir -p "${IMAGES_DIR}"
-# Run download script from the images directory so card folders are created there
-cd "${IMAGES_DIR}"
-python3 "${SCRIPT_DIR}/download_images_from_scryfall.py"
+# Run download script from SCRIPT_DIR (where creatures_image_urls.json lives),
+# then move the generated CMC folders to IMAGES_DIR.
+cd "${SCRIPT_DIR}"
+python3 download_images_from_scryfall.py
+# Move any newly created numeric CMC directories to IMAGES_DIR
+for cmc_dir in "${SCRIPT_DIR}"/*/; do
+    cmc_name="$(basename "$cmc_dir")"
+    # Only move directories whose names are integers (CMC folders)
+    if [[ "$cmc_name" =~ ^[0-9]+$ ]]; then
+        target="${IMAGES_DIR}/${cmc_name}"
+        if [ -d "$target" ]; then
+            # Merge: move individual files so we don't overwrite existing ones
+            find "$cmc_dir" -maxdepth 1 -name "*.jpg" | while read -r f; do
+                dest="${target}/$(basename "$f")"
+                [ -f "$dest" ] || mv "$f" "$dest"
+            done
+            rmdir --ignore-fail-on-non-empty "$cmc_dir"
+        else
+            mv "$cmc_dir" "$target"
+        fi
+    fi
+done
 echo "Images téléchargées."
 echo ""
 
 # 4. Convertir les images en monochrome BMP
 echo "[4/4] Conversion des images en monochrome..."
 for dir in "${IMAGES_DIR}"/*/; do
-    if [ -d "$dir" ] && [ "$(ls -A "$dir"/*.jpg 2>/dev/null)" ]; then
-        mkdir -p "${dir}converted_files"
-        for jpg_file in "${dir}"*.jpg; do
-            if [ -f "$jpg_file" ]; then
-                output_file="${dir}converted_files/$(basename -- "$jpg_file" .jpg).bmp"
-                # Ne re-convertit pas les fichiers déjà existants
-                if [ ! -f "$output_file" ]; then
-                    echo "Conversion : $jpg_file"
-                    convert "$jpg_file" -resize 384x -colorspace Gray -monochrome "$output_file"
+    if [ -d "$dir" ]; then
+        # Check for JPG files using find to avoid glob-expansion issues
+        if find "$dir" -maxdepth 1 -name "*.jpg" | grep -q .; then
+            mkdir -p "${dir}converted_files"
+            for jpg_file in "${dir}"*.jpg; do
+                if [ -f "$jpg_file" ]; then
+                    output_file="${dir}converted_files/$(basename -- "$jpg_file" .jpg).bmp"
+                    # Ne re-convertit pas les fichiers déjà existants
+                    if [ ! -f "$output_file" ]; then
+                        echo "Conversion : $jpg_file"
+                        convert "$jpg_file" -resize 384x -colorspace Gray -monochrome "$output_file"
+                    fi
                 fi
-            fi
-        done
+            done
+        fi
     fi
 done
 echo "Conversion terminée."
