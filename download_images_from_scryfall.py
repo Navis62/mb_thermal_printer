@@ -71,7 +71,10 @@ def download_image(item, images_dir):
                     tmp_f.write(chunk)
             os.replace(tmp_path, save_path)
         except Exception:
-            os.unlink(tmp_path)
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
             raise
         return name
     except Exception as e:

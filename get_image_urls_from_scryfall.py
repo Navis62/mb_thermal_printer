@@ -39,7 +39,12 @@ def is_valid_creature(card_data):
 
 
 def load_creatures(atomic_cards_path):
-    """Parse AtomicCards.json and return a dict of creature cards keyed by card name."""
+    """Parse AtomicCards.json and return a dict of creature cards keyed by card name.
+
+    In MTGJSON's AtomicCards format each entry is a list of printing objects.
+    Each printing object contains a "name" field (confirmed present in the schema)
+    which is used for filtering (e.g., the "A-" Arena-reprint prefix check).
+    """
     creatures = {}
     with open(atomic_cards_path, 'r', encoding='utf-8') as f:
         for item in ijson.items(f, 'data'):

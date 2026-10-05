@@ -141,6 +141,7 @@ def main():
         elif GPIO.input(BUTTON_PRINT_PIN) == GPIO.HIGH:
             display_printing(cmc)
             print_random_card(cmc)
+            display_cmc(cmc)   # restore CMC view after printing
             time.sleep(DEBOUNCE_DELAY)
 
 if __name__ == "__main__":
