@@ -1,0 +1,21 @@
+# settings.cfg — Configuration for the Momir Basic thermal printer project.
+# Copy this file to settings.cfg and adjust the paths for your setup.
+# settings.cfg is excluded from version control (.gitignore).
+
+[DEFAULT]
+
+# Directory where card images (JPG) and converted BMP files are stored.
+# One sub-folder per CMC value will be created here.
+# Example: /home/pi/Desktop/momir
+IMAGES_DIR=/home/pi/Desktop/momir
+
+# Directory where intermediate data files are stored (AtomicCards.json,
+# creatures_image_urls.json). Keeping this outside the repository avoids
+# committing large data files.
+# Example: /home/pi/momir_data
+DATA_DIR=/home/pi/momir_data
+
+# Path to the TrueType font used by the OLED display.
+# The bundled font can be referenced relative to the project directory.
+# Example: /home/pi/mb_thermal_printer/FredokaOne-Regular.ttf
+FONT_PATH=/home/pi/mb_thermal_printer/FredokaOne-Regular.ttf

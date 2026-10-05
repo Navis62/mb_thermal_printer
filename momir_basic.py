@@ -1,90 +1,148 @@
-from escpos.printer import Serial
-import os, random
-import RPi.GPIO as GPIO
-from luma.core.interface.serial import i2c
-from luma.core.render import canvas
-from luma.oled.device import ssd1306 #imports of different modules
-from luma.core.legacy import text
-from PIL import Image
-from PIL import ImageFont
+import os
+import configparser
+import random
 import time
 
-#Button pins
-BUTTON_1_PIN = 11  
-BUTTON_2_PIN = 13
-BUTTON_3_PIN = 15
+import RPi.GPIO as GPIO
+from escpos.printer import Serial
+from luma.core.interface.serial import i2c
+from luma.core.render import canvas
+from luma.oled.device import ssd1306
+from PIL import Image, ImageFont
 
-cmc = 0 #cmc variable for tracking cmc
+# ---------------------------------------------------------------------------
+# Settings
+# ---------------------------------------------------------------------------
 
-p = Serial(devfile='/dev/serial0', baudrate=9600, bytesize=8, parity='N', stopbits=1, timeout=10.0) #initilize thermal printer serial 
+def load_settings():
+    """Load configuration from settings.cfg located next to this script."""
+    config = configparser.RawConfigParser()
+    settings_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings.cfg')
+    if not config.read(settings_path):
+        raise FileNotFoundError(
+            f"settings.cfg not found at {settings_path}. "
+            "Copy settings.cfg.example and adjust the paths."
+        )
+    return config
 
-#initilize OLED screen serial ports, set communication and set font/size
-serial = i2c(port=1, address=0x3C) 
-device = ssd1306(serial)
-font16 = ImageFont.truetype('/home/navis/.fonts/FredokaOne-Regular.ttf', 16) 
+_config = load_settings()
+IMAGES_DIR = os.path.expanduser(_config.get('DEFAULT', 'IMAGES_DIR'))
+FONT_PATH  = os.path.expanduser(_config.get('DEFAULT', 'FONT_PATH'))
+
+# ---------------------------------------------------------------------------
+# Hardware constants
+# ---------------------------------------------------------------------------
+
+BUTTON_UP_PIN    = 11   # Increase CMC
+BUTTON_DOWN_PIN  = 13   # Decrease CMC
+BUTTON_PRINT_PIN = 15   # Print a random card
+
+CMC_MIN = 0
+CMC_MAX = 16
+
+DEBOUNCE_DELAY = 0.2    # seconds — adjust for your buttons
+POLL_INTERVAL  = 0.05   # seconds — reduce CPU usage / prevent thermal throttling
+
+# ---------------------------------------------------------------------------
+# Hardware initialisation
+# ---------------------------------------------------------------------------
+
+# Thermal printer
+printer = Serial(devfile='/dev/serial0', baudrate=9600, bytesize=8, parity='N', stopbits=1, timeout=10.0)
+
+# OLED display
+_serial = i2c(port=1, address=0x3C)
+display  = ssd1306(_serial)
+font16   = ImageFont.truetype(FONT_PATH, 16)
+
+# GPIO buttons
+# Wiring: buttons connect the pin to 3.3 V (active-high).
+# PUD_DOWN holds the line LOW by default; a button press pulls it HIGH.
+GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BOARD)
+for pin in (BUTTON_UP_PIN, BUTTON_DOWN_PIN, BUTTON_PRINT_PIN):
+    GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+
+# ---------------------------------------------------------------------------
+# Display helpers
+# ---------------------------------------------------------------------------
 
 def display_cmc(cmc):
-    with canvas(device) as draw:
-        draw.text((5, 30), "Mana : " + str(cmc), fill="white", font=font16)
-        
-#display initial cmc = 0
-display_cmc(cmc) 
+    """Show the current CMC value on the OLED."""
+    with canvas(display) as draw:
+        draw.text((5, 30), f"Mana: {cmc}", fill="white", font=font16)
 
-def display_print_message(cmc):
-    with canvas(device) as draw:
-        draw.text((5, 0), "Impression", fill="white")#, font=font16)
-        draw.text((5, 30), "Mana : " + str(cmc), fill="white", font=font16)
-        
-def display_message(message):
-    with canvas(device) as draw:
+def display_printing(cmc):
+    """Show a 'Printing…' message alongside the current CMC."""
+    with canvas(display) as draw:
+        draw.text((5, 0),  "Printing...", fill="white")
+        draw.text((5, 30), f"Mana: {cmc}", fill="white", font=font16)
+
+def display_message(message, cmc):
+    """Show a temporary message then return to the CMC display."""
+    with canvas(display) as draw:
         draw.text((5, 30), str(message), fill="white", font=font16)
     time.sleep(2)
     display_cmc(cmc)
-        
-#ignore button warnings and set numbering mode to BOARD
-GPIO.setwarnings(False) 
-GPIO.setmode(GPIO.BOARD)
 
-#set GPIO settings for buttons
-GPIO.setup(BUTTON_1_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) 
-GPIO.setup(BUTTON_2_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-GPIO.setup(BUTTON_3_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+# ---------------------------------------------------------------------------
+# Printing
+# ---------------------------------------------------------------------------
 
-def print_random_image(cmc): #function to print image
-    path = '/home/navis/Desktop/momir/' + str(cmc) + '/'
+def print_random_card(cmc):
+    """Pick a random converted BMP for the given CMC and print it."""
+    path = os.path.join(IMAGES_DIR, str(cmc), 'converted_files')
     try:
-        image_path = path + random.choice(os.listdir(path))
-        print_image(image_path)
-        p.textln("")
-        p.textln("")
-        p.textln("")
+        files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+        if not files:
+            raise FileNotFoundError(f"No converted images found in {path}")
+        image_path = os.path.join(path, random.choice(files))
+        _print_image(image_path)
+        # Feed paper
+        printer.textln("")
+        printer.textln("")
+        printer.textln("")
     except Exception as e:
-        print("An error occurred:", e)
+        print(f"Print error: {e}")
 
-def print_image(image_path):
+def _print_image(image_path):
+    """Send a single image to the thermal printer."""
     with Image.open(image_path) as img:
         img = img.convert('1')
-        p.image(img)
+        printer.image(img)
 
-debounce_delay = 0.2  # Adjust this value as needed for your buttons
+# ---------------------------------------------------------------------------
+# Main loop
+# ---------------------------------------------------------------------------
 
-while True: # Run forever
-    time.sleep(0.05)  # Reduce CPU usage, prevent thermal throttling
-    if GPIO.input(BUTTON_1_PIN) == GPIO.LOW: #increase CMC button
-        if cmc < 16: #highest cmc is 16, so we don't want to go over that
-            cmc = cmc + 1
-            display_cmc(cmc)
-            time.sleep(debounce_delay)  # Debounce delay
-        else:
-            display_message("Trop haut, mec !")
-    if GPIO.input(BUTTON_2_PIN) == GPIO.LOW: #decrease CMC button
-        if cmc > 0: #lowest cmc is 0 so we don't want to go negative
-            cmc = cmc - 1
-            display_cmc(cmc)
-            time.sleep(debounce_delay)  # Debounce delay
-        else:
-            display_message("Mais t'es con ?")
-    if GPIO.input(BUTTON_3_PIN) == GPIO.LOW: #printing button
-        display_print_message(cmc)
-        print_random_image(cmc)
-        time.sleep(debounce_delay)  # Debounce delay
+def main():
+    cmc = 0
+    display_cmc(cmc)
+
+    while True:
+        time.sleep(POLL_INTERVAL)
+
+        if GPIO.input(BUTTON_UP_PIN) == GPIO.HIGH:
+            if cmc < CMC_MAX:
+                cmc += 1
+                display_cmc(cmc)
+                time.sleep(DEBOUNCE_DELAY)
+            else:
+                display_message("Already at max!", cmc)  # includes a 2 s delay
+
+        elif GPIO.input(BUTTON_DOWN_PIN) == GPIO.HIGH:
+            if cmc > CMC_MIN:
+                cmc -= 1
+                display_cmc(cmc)
+                time.sleep(DEBOUNCE_DELAY)
+            else:
+                display_message("Already at 0!", cmc)  # includes a 2 s delay
+
+        elif GPIO.input(BUTTON_PRINT_PIN) == GPIO.HIGH:
+            display_printing(cmc)
+            print_random_card(cmc)
+            display_cmc(cmc)   # restore CMC view after printing
+            time.sleep(DEBOUNCE_DELAY)
+
+if __name__ == "__main__":
+    main()

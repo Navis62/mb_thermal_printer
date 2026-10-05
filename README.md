@@ -1,52 +1,162 @@
-# mb_thermal_printer
+# Momir Basic Thermal Printer
 
-Here are the scripts and steps i took to create a momir basic thermal printer, using a cheap thermal printer and a  raspberry pi
+A Raspberry Pi-powered thermal printer that plays [Momir Basic](https://mtg.fandom.com/wiki/Momir_Basic): press a button to set your mana value, then print a random creature card at that cost.
 
-A step by step on how this was done is 
+![Wiring diagram](wiring.jpg)
 
-- Get the latest MTGJSON AtomicCards.json file from mtgjson.com
-- Extract the scryfall id's and other useful information form the JSON file
-- Get the image url's from scryfall and download them to one folder per cmc
-- Using imagemagick convert the jpgs to monochrome grayscale
-- Connect buttons, thermal printer and OLED screen to Raspberry Pi GPIO pins
-- Add python script, and image files to Raspberry Pi
-- Add python script to crontab startup so that it is automatically started when the Pi is powered on
+> **Note:** The wiring diagram above was made with a Raspberry Pi 4. The GPIO pinout is identical on the Raspberry Pi Zero 2 W — the same connections apply.
 
-Description of files: <br />
-**get_image_urls_from_scryfall.py** - Get URLs for the actual image files from Scryfall, uses the Scryfall API and creates a new JSON file for us <br />
-**download_images_from_scryfall.py** - Downloads the actual images into folders from Scryfalls database <br />
-**convert_images_to_monochrome.sh** - Converts the JPG files into monochrome BMP files, this needs to be run on a Linux installation with imagemagick <br />
-**momir_basic.py** - Actual python program that runs on the Pi for the printer <br />
+---
 
-I used the following hardware <br />
-3x KY-004 Push Button  <br />
-3x 1k OHM Resistors (optional, but will extend the lifetime of your buttons. They should be placed between the 3.3v and the button in that case) <br />
-1x 3 x 0.91" OLED 128 x 32 pixels I2C Screen <br />
-1x Raspberry Pi Zero 2 <br />
-1x QR204 Thermal Printer <br />
-1x 12V Female 2.1mm x 5.5mm DC Power Jack Adapter <br />
-1x 9v 2A Male DC Power Adapter <br />
-1x Power cable for Raspberry PI <br />
-1x 400-Point Breadboard Kit with Dupont Cable and Jumper Wire <br />
-1x 32gb micro SD card <br />
+---
 
-# Convert to BIN example
+## How it works
 
-#Create a new folder for the binary files
+1. Download the full card database (`AtomicCards.json`) from [MTGJSON](https://mtgjson.com)
+2. Query the [Scryfall API](https://scryfall.com/docs/api) for creature card image URLs
+3. Download card images and convert them to monochrome BMP for the thermal printer
+4. Run `momir_basic.py` on the Pi: use two buttons to set the CMC, press a third to print a random card
 
+---
+
+## Hardware
+
+| Qty | Component |
+|-----|-----------|
+| 1 | Raspberry Pi 4 (or Raspberry Pi Zero 2 W) |
+| 1 | QR204 Thermal Printer |
+| 1 | 0.91" OLED 128×32 I²C display (SSD1306) |
+| 3 | KY-004 push button |
+| 3 | 1 kΩ resistor *(optional — extends button lifetime; place between 3.3 V and the button)* |
+| 1 | 12 V female 2.1 mm × 5.5 mm DC power jack adapter |
+| 1 | 9 V 2 A male DC power adapter |
+| 1 | Power cable for the Raspberry Pi |
+| 1 | Soldering breadboard |
+| 1 | 32 GB micro SD card |
+| — | Dupont cables |
+
+---
+
+## Wiring
+
+All pins use BOARD numbering (physical pin numbers, not BCM GPIO numbers).
+
+| Component | Pi physical pin | Notes |
+|-----------|----------------|-------|
+| Button UP (increase CMC) | Pin 11 | Pull-down via PUD_DOWN; button connects pin to 3.3 V |
+| Button DOWN (decrease CMC) | Pin 13 | Same wiring |
+| Button PRINT | Pin 15 | Same wiring |
+| OLED SDA | Pin 3 (SDA1) | I²C address 0x3C |
+| OLED SCL | Pin 5 (SCL1) | |
+| OLED VCC | Pin 1 (3.3 V) | |
+| OLED GND | Pin 6 (GND) | |
+| Thermal printer TX | Pin 8 (UART TX) | `/dev/serial0`, 9600 baud |
+| Thermal printer RX | Pin 10 (UART RX) | |
+| Thermal printer GND | GND | Shared ground with Pi |
+| Thermal printer VH | 9 V supply | Separate from Pi power |
+
+> The GPIO pinout is the same on all 40-pin Raspberry Pi models (Pi 3, Pi 4, Pi Zero 2 W, etc.).
+
+---
+
+## Prerequisites
+
+- Python 3 with the following packages:
+  ```bash
+  pip install ijson requests python-escpos RPi.GPIO luma.oled Pillow
+  ```
+- [ImageMagick](https://imagemagick.org) (`convert` command)
+- `curl` and `gunzip`
+
+---
+
+## Setup
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/Navis62/mb_thermal_printer.git
+cd mb_thermal_printer
+```
+
+### 2. Configure paths
+
+Copy the settings template and edit it for your setup:
+
+```bash
+cp settings.cfg.example settings.cfg
+```
+
+`settings.cfg` is excluded from version control (`.gitignore`). Edit it:
+
+```ini
+[DEFAULT]
+
+# Directory where card images are stored (one sub-folder per CMC value)
+IMAGES_DIR=/home/pi/Desktop/momir
+
+# Directory for intermediate data files (AtomicCards.json, creatures_image_urls.json)
+DATA_DIR=/home/pi/momir_data
+
+# Path to the TrueType font used by the OLED display
+FONT_PATH=/home/pi/mb_thermal_printer/FredokaOne-Regular.ttf
+```
+
+### 3. Download and convert card images
+
+```bash
+./update.sh
+```
+
+This single script:
+1. Downloads the latest `AtomicCards.json` from MTGJSON
+2. Queries Scryfall for creature image URLs
+3. Downloads only **new** images (cards already converted to BMP are skipped)
+4. Converts new JPGs to monochrome BMP in parallel using all CPU cores
+
+Re-run `update.sh` whenever a new Magic set is released to fetch new cards only.
+
+### 4. Run on startup
+
+Add `momir_basic.py` to crontab so it starts automatically when the Pi boots:
+
+```bash
+crontab -e
+```
+
+Add the following line:
+
+```
+@reboot python3 /home/pi/mb_thermal_printer/momir_basic.py
+```
+
+---
+
+## File reference
+
+| File | Description |
+|------|-------------|
+| `settings.cfg.example` | Configuration template — copy to `settings.cfg` and set your paths |
+| `update.sh` | All-in-one update script: download, fetch URLs, download images, convert to BMP |
+| `get_image_urls_from_scryfall.py` | Queries the Scryfall API and writes `creatures_image_urls.json` |
+| `download_images_from_scryfall.py` | Downloads card images in parallel; skips cards already converted |
+| `convert_images_to_monochrome.sh` | Standalone script to convert JPGs to monochrome BMP (called by `update.sh`) |
+| `momir_basic.py` | Main program: runs on the Pi, reads buttons, drives the OLED and thermal printer |
+| `FredokaOne-Regular.ttf` | Font used by the OLED display |
+| `wiring.jpg` | Wiring reference diagram |
+
+---
+
+## Arduino note
+
+This project started as an Arduino build but was abandoned because the QR204 thermal printer is incompatible with most common Arduino thermal printer libraries. If you use a different printer that works with Arduino, you will need to convert the BMP files to raw binary (PBM) instead:
+
+```bash
 mkdir -p ../binary_files
 
-#Iterate through each BMP file and convert it to binary (PBM), remove header, and pad zero
-
 for file in *.bmp; do
-    echo "Creating BIN file for: $file" 
-
-    # Define the output filename in the binary_files directory by replacing the extension with pbm
     output_file="../binary_files/$(basename -- "$file" .bmp).pbm"
-
-    # Use ImageMagick's convert command to convert BMP to binary (PBM) with a depth of 1
     convert "$file" -threshold 50% -compress none pbm:- | \
-    
-    # Remove the PBM header and pad zeros to make the height even
-    awk 'NR>2 {print $0} END{if(NR%2!=0) print "0"}' > "$output_file"
+        awk 'NR>2 {print $0} END{if(NR%2!=0) print "0"}' > "$output_file"
 done
+```
