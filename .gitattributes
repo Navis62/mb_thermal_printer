@@ -1,0 +1,7 @@
+# Normalise line endings in the repository (LF); shell scripts must stay LF
+# in the working tree too, otherwise "#!/bin/bash\r" breaks on the Raspberry Pi.
+* text=auto
+*.sh text eol=lf
+
+*.ttf binary
+*.jpg binary
