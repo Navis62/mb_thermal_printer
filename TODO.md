@@ -12,7 +12,7 @@ Les identifiants (B = bug, A = amélioration, N = nettoyage) servent à référe
 - [x] **B1** 🔴 `scripts/get_image_urls_from_scryfall.py` : `ijson.items(f, 'data')` charge tout `AtomicCards.json` en RAM (OOM probable sur Pi Zero 2 W). Utiliser `ijson.kvitems(f, 'data')`.
 - [x] **B2** 🔴 `scripts/get_image_urls_from_scryfall.py` : les cartes double-face (transform, MDFC) n'ont pas d'`image_uris` racine et sont ignorées. Repli sur `card_faces[0]["image_uris"]`.
 - [x] **B3** 🔴 `scripts/get_image_urls_from_scryfall.py` : en-têtes `User-Agent` / `Accept` manquants (exigés par Scryfall), pas de gestion du 429 ni de retry, lot en échec affiché comme « done ».
-- [ ] **B4** 🟠 `scripts/update.sh` : `~` non expansé dans `IMAGES_DIR` / `DATA_DIR` (le parsing `grep` ne gère pas non plus les guillemets ni les commentaires en fin de ligne).
+- [x] **B4** 🟠 `scripts/update.sh` : `~` non expansé dans `IMAGES_DIR` / `DATA_DIR` (le parsing `grep` ne gère pas non plus les guillemets ni les commentaires en fin de ligne).
 - [ ] **B5** 🟠 `momir_basic.py` : le bouton PRINT n'a pas de détection de front, un appui prolongé réimprime une carte.
 - [ ] **B6** 🟠 `momir_basic.py` : messages d'erreur OLED tronqués / illisibles (`str(e)[:20]`), « Already at max! » probablement rogné. Utiliser des messages courts prédéfinis.
 - [ ] **B7** 🟠 `momir_basic.py` : pas de handler `SIGTERM`, `GPIO.cleanup()` non exécuté à l'arrêt par `kill` / systemd ; traceback sur `Ctrl+C`.
@@ -46,14 +46,14 @@ Les identifiants (B = bug, A = amélioration, N = nettoyage) servent à référe
 
 ## 🧹 Nettoyages
 
-- [ ] **N1** 🟠 Supprimer `scripts/convert_images_to_monochrome.sh` (code mort, chemin codé en dur, non appelé par `scripts/update.sh`) et le retirer du tableau du README.
-- [ ] **N2** 🟠 Ajouter un `.gitattributes` (`* text=auto`, `*.sh text eol=lf`) et normaliser les fins de ligne (`momir_basic.py` et `scripts/get_image_urls_from_scryfall.py` sont en CRLF dans le dépôt).
-- [ ] **N3** 🟢 `scripts/update.sh` : numérotation des étapes incohérente (`[1/4]`…`[4/4]` puis `[5/5]`) et en-tête à mettre à jour.
-- [ ] **N4** 🟢 README : `---` en double (lignes 9-11).
+- [x] **N1** 🟠 Supprimer `scripts/convert_images_to_monochrome.sh` (code mort, chemin codé en dur, non appelé par `scripts/update.sh`) et le retirer du tableau du README.
+- [x] **N2** 🟠 Ajouter un `.gitattributes` (`* text=auto`, `*.sh text eol=lf`) et normaliser les fins de ligne (`momir_basic.py` et `scripts/get_image_urls_from_scryfall.py` sont en CRLF dans le dépôt).
+- [x] **N3** 🟢 `scripts/update.sh` : numérotation des étapes incohérente (`[1/4]`…`[4/4]` puis `[5/5]`) et en-tête à mettre à jour.
+- [x] **N4** 🟢 README : `---` en double (lignes 9-11).
 - [x] **N5** 🟢 README : URL de clone (`mb_thermal_printer`) ≠ nom du dossier local.
-- [ ] **N6** 🟢 README : documenter l'activation I²C / port série matériel (`raspi-config`) et PEP 668 (venv ou `--break-system-packages`).
-- [ ] **N7** 🟢 README : mentionner l'étape 5 de `scripts/update.sh` (suppression des JPG et JSON temporaires).
-- [ ] **N8** 🟢 `.gitignore` : ajouter `__pycache__/`, `.venv/`, `tmp*`.
+- [x] **N6** 🟢 README : documenter l'activation I²C / port série matériel (`raspi-config`) et PEP 668 (venv ou `--break-system-packages`).
+- [x] **N7** 🟢 README : mentionner l'étape 5 de `scripts/update.sh` (suppression des JPG et JSON temporaires).
+- [x] **N8** 🟢 `.gitignore` : ajouter `__pycache__/`, `.venv/`, `tmp*`.
 - [ ] **N9** 🟢 Harmoniser `print` / `logging` entre les scripts, renommer les variables `_printer` / `_serial` / `_display` de `init_hardware`.
 
 ---
@@ -61,6 +61,7 @@ Les identifiants (B = bug, A = amélioration, N = nettoyage) servent à référe
 ## ✅ Fait
 
 - [x] 2026-10-06 — Analyse du projet et rédaction de cette liste.
+- [x] 2026-10-06 — B4 : `scripts/update.sh` expanse `~` comme `momir_basic.py` (testé avec CRLF, espaces et `~`). N2 : `.gitattributes` + renormalisation (`momir_basic.py` passe en LF). N3 : étapes numérotées `/5`, en-tête complété. N1 : `convert_images_to_monochrome.sh` supprimé. N4, N6, N7 : README (doublon `---`, I²C/série/PEP 668, étape 5 de `update.sh`). N8 : `.gitignore` (`__pycache__/`, `*.pyc`, `.venv/`) ; le motif `tmp*` n'a pas été ajouté, les temporaires étant écrits dans `IMAGES_DIR`, hors dépôt (voir B8).
 - [x] 2026-10-06 — Dépôt GitHub : nouveau dépôt privé `arthur-lagenebre/momir_thermal_printer` (origin), ancien dépôt `Navis62/mb_thermal_printer` conservé comme remote `upstream` ; URL de clone et chemins `/home/pi/...` du README et de `settings.cfg.example` renommés en `momir_thermal_printer` (N5).
 - [x] 2026-10-06 — Corrections B1, B2, B3, B10 dans `scripts/get_image_urls_from_scryfall.py` : lecture en streaming (`kvitems`, seul l'oracle ID est gardé), repli sur `card_faces[0]` pour les cartes double-face, en-têtes Scryfall + retry/backoff 429/5xx (timeout 30 s, lots en échec signalés), `scryfallOracleId` protégé. Testé avec un faux `AtomicCards.json` et une API simulée ; nécessite `ijson>=3`.
 - [x] 2026-10-06 — Tri des fichiers : `scripts/` (update.sh, scripts Python, conversion) et `assets/` (police, schéma de câblage) ; `momir_basic.py` reste à la racine ; chemins mis à jour dans `update.sh`, `settings.cfg.example` et le README.

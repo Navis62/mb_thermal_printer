@@ -8,8 +8,6 @@ A Raspberry Pi-powered thermal printer that plays [Momir Basic](https://mtg.fand
 
 ---
 
----
-
 ## How it works
 
 1. Download the full card database (`AtomicCards.json`) from [MTGJSON](https://mtgjson.com)
@@ -61,12 +59,19 @@ All pins use BOARD numbering (physical pin numbers, not BCM GPIO numbers).
 
 ## Prerequisites
 
-- Python 3 with the following packages:
+- Python 3 with the following packages (`ijson` 3 or later is required):
   ```bash
-  pip install ijson requests python-escpos RPi.GPIO luma.oled Pillow
+  pip install "ijson>=3" requests python-escpos RPi.GPIO luma.oled Pillow
   ```
+  On Raspberry Pi OS Bookworm and later, `pip` refuses to install system-wide
+  (PEP 668): use a virtual environment (`python3 -m venv --system-site-packages .venv`),
+  or add `--break-system-packages`. If you use a virtual environment, run
+  `momir_basic.py` with `.venv/bin/python` (also in the crontab entry below).
 - [ImageMagick](https://imagemagick.org) (`convert` command)
 - `curl` and `gunzip`
+- The I²C bus and the hardware serial port enabled (`sudo raspi-config` →
+  *Interface Options*): **I2C** on, **Serial Port** → login shell *off*,
+  serial hardware *on*. Reboot afterwards.
 
 ---
 
@@ -113,6 +118,7 @@ This single script:
 2. Queries Scryfall for creature image URLs
 3. Downloads only **new** images (cards already converted to BMP are skipped)
 4. Converts new JPGs to monochrome BMP in parallel using all CPU cores
+5. Cleans up temporary files: the downloaded JPGs, `AtomicCards.json` and `creatures_image_urls.json` are deleted once converted
 
 Re-run `update.sh` whenever a new Magic set is released to fetch new cards only.
 
@@ -141,8 +147,7 @@ Add the following line:
 ├── scripts/                            Card database / image preparation
 │   ├── update.sh
 │   ├── get_image_urls_from_scryfall.py
-│   ├── download_images_from_scryfall.py
-│   └── convert_images_to_monochrome.sh
+│   └── download_images_from_scryfall.py
 └── assets/
     ├── FredokaOne-Regular.ttf
     └── wiring.jpg
@@ -155,6 +160,5 @@ Add the following line:
 | `scripts/update.sh` | All-in-one update script: download, fetch URLs, download images, convert to BMP |
 | `scripts/get_image_urls_from_scryfall.py` | Queries the Scryfall API and writes `creatures_image_urls.json` |
 | `scripts/download_images_from_scryfall.py` | Downloads card images in parallel; skips cards already converted |
-| `scripts/convert_images_to_monochrome.sh` | Standalone script to convert JPGs to monochrome BMP (not used by `update.sh`) |
 | `assets/FredokaOne-Regular.ttf` | Font used by the OLED display |
 | `assets/wiring.jpg` | Wiring reference diagram |

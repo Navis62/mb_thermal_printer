@@ -5,3 +5,8 @@ settings.cfg
 AtomicCards.json
 AtomicCards.json.gz
 creatures_image_urls.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
