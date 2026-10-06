@@ -77,8 +77,8 @@ All pins use BOARD numbering (physical pin numbers, not BCM GPIO numbers).
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/arthur-lagenebre/momir_thermal_printer.git
-cd momir_thermal_printer
+git clone https://github.com/Navis62/mb_thermal_printer.git
+cd mb_thermal_printer
 ```
 
 ### 2. Configure paths
@@ -131,7 +131,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now momir
 ```
 
-The unit assumes the user `pi` and the repository in `/home/pi/momir_thermal_printer`: edit `User`, `WorkingDirectory` and `ExecStart` in `deploy/momir.service` first if yours differ.
+The unit assumes the user `pi` and the repository in `/home/pi/mb_thermal_printer`: edit `User`, `WorkingDirectory` and `ExecStart` in `deploy/momir.service` first if yours differ.
 
 Useful commands:
 

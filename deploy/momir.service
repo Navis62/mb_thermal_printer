@@ -2,7 +2,7 @@
 # Install:  see "Run on startup" in README.md
 #
 # Adjust User, WorkingDirectory and ExecStart if your user is not "pi" or the
-# repository is not in /home/pi/momir_thermal_printer (use the virtualenv's
+# repository is not in /home/pi/mb_thermal_printer (use the virtualenv's
 # python in ExecStart if you installed the dependencies in one).
 
 [Unit]
@@ -15,8 +15,8 @@ StartLimitBurst=5
 [Service]
 Type=simple
 User=pi
-WorkingDirectory=/home/pi/momir_thermal_printer
-ExecStart=/usr/bin/python3 /home/pi/momir_thermal_printer/momir_basic.py
+WorkingDirectory=/home/pi/mb_thermal_printer
+ExecStart=/usr/bin/python3 /home/pi/mb_thermal_printer/momir_basic.py
 # Restart if the program crashes; a normal stop (systemctl stop) is not restarted
 Restart=on-failure
 RestartSec=10
