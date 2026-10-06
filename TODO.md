@@ -33,16 +33,16 @@ Les identifiants (B = bug, A = amélioration, N = nettoyage) servent à référe
 
 ### Programme principal
 - [ ] **A7** 🟠 Boutons GPIO par interruptions (`add_event_detect` + `bouncetime`) au lieu du polling.
-- [ ] **A8** 🟢 Mettre en cache la liste des fichiers par CMC (éviter `os.listdir` à chaque impression).
+- [x] **A8** 🟢 Mettre en cache la liste des fichiers par CMC (éviter `os.listdir` à chaque impression).
 - [ ] **A9** 🟢 Détection papier / imprimante (`paper_status()`, si le RX est câblé) affichée sur l'OLED.
-- [ ] **A10** 🟢 Mise en veille de l'OLED après inactivité (burn-in).
+- [x] **A10** 🟢 Mise en veille de l'OLED après inactivité (burn-in).
 - [x] **A11** 🟠 Remplacer le cron `@reboot` par un service systemd (`Restart=on-failure`, logs journald).
 - [ ] **A12** 🟢 Module de config partagé lu par les scripts Python, pour supprimer le parsing `grep` de `scripts/update.sh`.
-- [ ] **A13** 🟢 `FONT_PATH` relatif au dépôt par défaut.
+- [x] **A13** 🟢 `FONT_PATH` relatif au dépôt par défaut.
 
 ### Packaging et tests
 - [x] **A14** 🟠 Ajouter un `requirements.txt`.
-- [ ] **A15** 🟢 Tests unitaires : fait pour `scripts/` (`tests/test_scripts.py`, 18 tests) ; reste `momir_basic.py` (testable avec des mocks).
+- [x] **A15** 🟢 Tests unitaires : `tests/test_scripts.py` (scripts) et `tests/test_momir_basic.py` (matériel simulé) — 33 tests.
 
 ## 🧹 Nettoyages
 
@@ -54,13 +54,15 @@ Les identifiants (B = bug, A = amélioration, N = nettoyage) servent à référe
 - [x] **N6** 🟢 README : documenter l'activation I²C / port série matériel (`raspi-config`) et PEP 668 (venv ou `--break-system-packages`).
 - [x] **N7** 🟢 README : mentionner l'étape 5 de `scripts/update.sh` (suppression des JPG et JSON temporaires).
 - [x] **N8** 🟢 `.gitignore` : ajouter `__pycache__/`, `.venv/`, `tmp*`.
-- [ ] **N9** 🟢 Harmoniser `print` / `logging` entre les scripts, renommer les variables `_printer` / `_serial` / `_display` de `init_hardware`.
+- [x] **N9** 🟢 Harmoniser `print` / `logging` entre les scripts, renommer les variables `_printer` / `_serial` / `_display` de `init_hardware`.
 
 ---
 
 ## ✅ Fait
 
 - [x] 2026-10-06 — Analyse du projet et rédaction de cette liste.
+- [x] 2026-10-06 — `momir_basic.py` : A8 (liste des BMP en cache, rafraîchie quand le dossier change, donc pas de redémarrage après `update.sh` ; ignore aussi les `*.bmp.part`), A10 (OLED éteint après `OLED_TIMEOUT` s, 300 par défaut, 0 = jamais ; un bouton le rallume sans autre action), A13 (`FONT_PATH` optionnel, repli sur la police fournie si absent — évite un plantage avec un ancien `settings.cfg`), N9 (variables de `init_hardware` renommées ; `print` conservé dans les scripts CLI, `logging` dans le service). A15 : `tests/test_momir_basic.py`, 33 tests au total.
+- ⏸ Écartés pour l'instant, à décider : A6 (suppression de BMP, destructif), A7 (interruptions GPIO : comportement à valider sur de vrais boutons), A9 (détection papier : dépend du câblage RX), A12 (parsing de `settings.cfg` dans `update.sh`, fonctionne et testé).
 - [x] 2026-10-06 — A1, A4, B11 : `scripts/get_image_urls_from_scryfall.py` utilise désormais le bulk Scryfall `oracle-cards` (JSON Lines gzip, 25 Mo, ~3 s) au lieu de MTGJSON + ~250 appels API. Filtre : créatures, hors jetons/emblèmes, légales dans au moins un format, hors cartes Arena-only (Alchemy). Résultat réel : 17 946 créatures, double-faces incluses, 0 collision de nom. `ijson`, `curl` et `gunzip` ne sont plus requis ; `update.sh` passe à 4 étapes ; écriture atomique des fichiers. Testé contre Scryfall (extraction + téléchargement/conversion de 5 vraies cartes).
 - [x] 2026-10-06 — A11 : `deploy/momir.service` (systemd, `Restart=on-failure`, logs journald) à la place du cron ; README mis à jour. Non testé sur un Pi (écrit sans systemd ici). A15 (partiel) : `tests/test_scripts.py`, 18 tests.
 - [x] 2026-10-06 — A5 : nouveau `scripts/convert_images.py` (Pillow, parallèle, écriture atomique via `.part`, code retour 1 en cas d'échec) ; ImageMagick n'est plus requis, `update.sh` et README mis à jour. Testé avec de vrais JPG (BMP 1 bit de 384×535, rendu vérifié visuellement, JPG corrompu, BMP existant, `.part` périmé) ; non comparé à ImageMagick, absent de cette machine.

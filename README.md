@@ -100,8 +100,11 @@ IMAGES_DIR=/home/pi/Desktop/momir
 # Directory for intermediate data files (Scryfall bulk file, creatures_image_urls.json)
 DATA_DIR=/home/pi/momir_data
 
-# Path to the TrueType font used by the OLED display
-FONT_PATH=/home/pi/momir_thermal_printer/assets/FredokaOne-Regular.ttf
+# Optional: TrueType font of the OLED display (default: assets/FredokaOne-Regular.ttf)
+# FONT_PATH=assets/FredokaOne-Regular.ttf
+
+# Optional: seconds before the OLED switches off to avoid burn-in; any button wakes it (default: 300, 0 = never)
+# OLED_TIMEOUT=300
 ```
 
 ### 3. Download and convert card images
