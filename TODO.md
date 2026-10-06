@@ -19,15 +19,15 @@ Les identifiants (B = bug, A = amélioration, N = nettoyage) servent à référe
 - [x] **B8** 🟢 `scripts/download_images_from_scryfall.py` : fichiers temporaires `tmpXXXX` orphelins si le script est tué (ajouter un suffixe `.part` et les nettoyer).
 - [x] **B9** 🟢 `scripts/download_images_from_scryfall.py` : code retour toujours 0 malgré des échecs, pas de retry / backoff sur 429/5xx.
 - [x] **B10** 🟢 `scripts/get_image_urls_from_scryfall.py` : `scryfallOracleId` non protégé (`KeyError` = plantage complet).
-- [ ] **B11** 🟢 `scripts/get_image_urls_from_scryfall.py` : les cartes Alchemy digitales (sans préfixe `A-`) ne sont pas filtrées.
+- [x] **B11** 🟢 `scripts/get_image_urls_from_scryfall.py` : les cartes Alchemy digitales (sans préfixe `A-`) ne sont pas filtrées.
 
 ## ✨ Améliorations
 
 ### Pipeline de données
-- [ ] **A1** 🟠 Remplacer MTGJSON par le bulk `oracle-cards` de Scryfall (supprime un téléchargement et ~25 appels API par lot).
+- [x] **A1** 🟠 Remplacer MTGJSON par le bulk `oracle-cards` de Scryfall (supprime un téléchargement et ~25 appels API par lot).
 - [x] **A2** 🟠 Télécharger l'image `normal` (488 px) au lieu de `large` (suffisant pour 384 px d'impression).
 - [x] **A3** 🟢 Sauter le téléchargement si le JPG existe déjà (conversion précédemment interrompue).
-- [ ] **A4** 🟢 Écriture atomique + `encoding='utf-8'` pour `creatures_image_urls.json`.
+- [x] **A4** 🟢 Écriture atomique + `encoding='utf-8'` pour `creatures_image_urls.json`.
 - [x] **A5** 🟢 Remplacer ImageMagick par Pillow (une dépendance en moins, dithering Floyd-Steinberg contrôlable).
 - [ ] **A6** 🟢 Élaguer les BMP des cartes qui ne sont plus dans la liste.
 
@@ -36,13 +36,13 @@ Les identifiants (B = bug, A = amélioration, N = nettoyage) servent à référe
 - [ ] **A8** 🟢 Mettre en cache la liste des fichiers par CMC (éviter `os.listdir` à chaque impression).
 - [ ] **A9** 🟢 Détection papier / imprimante (`paper_status()`, si le RX est câblé) affichée sur l'OLED.
 - [ ] **A10** 🟢 Mise en veille de l'OLED après inactivité (burn-in).
-- [ ] **A11** 🟠 Remplacer le cron `@reboot` par un service systemd (`Restart=on-failure`, logs journald).
+- [x] **A11** 🟠 Remplacer le cron `@reboot` par un service systemd (`Restart=on-failure`, logs journald).
 - [ ] **A12** 🟢 Module de config partagé lu par les scripts Python, pour supprimer le parsing `grep` de `scripts/update.sh`.
 - [ ] **A13** 🟢 `FONT_PATH` relatif au dépôt par défaut.
 
 ### Packaging et tests
 - [x] **A14** 🟠 Ajouter un `requirements.txt`.
-- [ ] **A15** 🟢 Tests unitaires : `is_valid_creature`, `sanitise_name`, sélection d'image (`momir_basic` testable avec des mocks).
+- [ ] **A15** 🟢 Tests unitaires : fait pour `scripts/` (`tests/test_scripts.py`, 18 tests) ; reste `momir_basic.py` (testable avec des mocks).
 
 ## 🧹 Nettoyages
 
@@ -61,6 +61,8 @@ Les identifiants (B = bug, A = amélioration, N = nettoyage) servent à référe
 ## ✅ Fait
 
 - [x] 2026-10-06 — Analyse du projet et rédaction de cette liste.
+- [x] 2026-10-06 — A1, A4, B11 : `scripts/get_image_urls_from_scryfall.py` utilise désormais le bulk Scryfall `oracle-cards` (JSON Lines gzip, 25 Mo, ~3 s) au lieu de MTGJSON + ~250 appels API. Filtre : créatures, hors jetons/emblèmes, légales dans au moins un format, hors cartes Arena-only (Alchemy). Résultat réel : 17 946 créatures, double-faces incluses, 0 collision de nom. `ijson`, `curl` et `gunzip` ne sont plus requis ; `update.sh` passe à 4 étapes ; écriture atomique des fichiers. Testé contre Scryfall (extraction + téléchargement/conversion de 5 vraies cartes).
+- [x] 2026-10-06 — A11 : `deploy/momir.service` (systemd, `Restart=on-failure`, logs journald) à la place du cron ; README mis à jour. Non testé sur un Pi (écrit sans systemd ici). A15 (partiel) : `tests/test_scripts.py`, 18 tests.
 - [x] 2026-10-06 — A5 : nouveau `scripts/convert_images.py` (Pillow, parallèle, écriture atomique via `.part`, code retour 1 en cas d'échec) ; ImageMagick n'est plus requis, `update.sh` et README mis à jour. Testé avec de vrais JPG (BMP 1 bit de 384×535, rendu vérifié visuellement, JPG corrompu, BMP existant, `.part` périmé) ; non comparé à ImageMagick, absent de cette machine.
 - [x] 2026-10-06 — `scripts/download_images_from_scryfall.py` : B8 (fichiers `.part` nettoyés au démarrage), B9 (retry/backoff 429/5xx, code retour 1 en cas d'échec ; `update.sh` convertit quand même les images reçues puis termine en erreur), A3 (JPG déjà téléchargés non retéléchargés). A2 : image `normal` (488 px) au lieu de `large`. A14 : `requirements.txt`. Testé avec un serveur HTTP local (succès, 404, JPG existant, BMP existant, `.part` périmé).
 - [x] 2026-10-06 — `momir_basic.py` : B5 (attente du relâchement du bouton PRINT après impression), B6 (messages OLED courts et mesurés avec la vraie police : `Max reached`, `Min reached`, `No cards`, `Print error` ; l'erreur détaillée reste dans les logs), B7 (SIGTERM converti en sortie normale, `Ctrl+C` sans traceback, `GPIO.cleanup()` garanti). Testé avec des faux modules matériel ; pas encore testé sur le Pi.

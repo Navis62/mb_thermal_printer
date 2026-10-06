@@ -10,10 +10,9 @@ A Raspberry Pi-powered thermal printer that plays [Momir Basic](https://mtg.fand
 
 ## How it works
 
-1. Download the full card database (`AtomicCards.json`) from [MTGJSON](https://mtgjson.com)
-2. Query the [Scryfall API](https://scryfall.com/docs/api) for creature card image URLs
-3. Download card images and convert them to monochrome BMP for the thermal printer
-4. Run `momir_basic.py` on the Pi: use two buttons to set the CMC, press a third to print a random card
+1. Download the [Scryfall bulk data](https://scryfall.com/docs/api/bulk-data) (one card per Oracle ID) and keep the creature cards
+2. Download their card images from Scryfall and convert them to monochrome BMP for the thermal printer
+3. Run `momir_basic.py` on the Pi: use two buttons to set the CMC, press a third to print a random card
 
 ---
 
@@ -59,15 +58,14 @@ All pins use BOARD numbering (physical pin numbers, not BCM GPIO numbers).
 
 ## Prerequisites
 
-- Python 3 with the packages listed in `requirements.txt` (`ijson` 3 or later is required):
+- Python 3 with the packages listed in `requirements.txt`:
   ```bash
   pip install -r requirements.txt
   ```
   On Raspberry Pi OS Bookworm and later, `pip` refuses to install system-wide
   (PEP 668): use a virtual environment (`python3 -m venv --system-site-packages .venv`),
   or add `--break-system-packages`. If you use a virtual environment, run
-  `momir_basic.py` with `.venv/bin/python` (also in the crontab entry below).
-- `curl` and `gunzip`
+  `momir_basic.py` with `.venv/bin/python` (also in `deploy/momir.service`).
 - The I²C bus and the hardware serial port enabled (`sudo raspi-config` →
   *Interface Options*): **I2C** on, **Serial Port** → login shell *off*,
   serial hardware *on*. Reboot afterwards.
@@ -99,7 +97,7 @@ cp settings.cfg.example settings.cfg
 # Directory where card images are stored (one sub-folder per CMC value)
 IMAGES_DIR=/home/pi/Desktop/momir
 
-# Directory for intermediate data files (AtomicCards.json, creatures_image_urls.json)
+# Directory for intermediate data files (Scryfall bulk file, creatures_image_urls.json)
 DATA_DIR=/home/pi/momir_data
 
 # Path to the TrueType font used by the OLED display
@@ -113,27 +111,34 @@ FONT_PATH=/home/pi/momir_thermal_printer/assets/FredokaOne-Regular.ttf
 ```
 
 This single script:
-1. Downloads the latest `AtomicCards.json` from MTGJSON
-2. Queries Scryfall for creature image URLs
-3. Downloads only **new** images (cards already converted to BMP are skipped; failed downloads are retried, and reported at the end)
-4. Converts new JPGs to monochrome BMP in parallel using all CPU cores
-5. Cleans up temporary files: the downloaded JPGs, `AtomicCards.json` and `creatures_image_urls.json` are deleted once converted
+1. Downloads the latest Scryfall bulk data (~25 MB) and extracts the list of creature cards (tokens, Un-cards and Arena-only Alchemy cards are left out; double-faced cards use their front face)
+2. Downloads only **new** images (cards already converted to BMP are skipped; failed downloads are retried, and reported at the end)
+3. Converts new JPGs to monochrome BMP in parallel using all CPU cores
+4. Cleans up temporary files: the downloaded JPGs, the Scryfall bulk file and `creatures_image_urls.json` are deleted once converted
 
 Re-run `update.sh` whenever a new Magic set is released to fetch new cards only.
 
 ### 4. Run on startup
 
-Add `momir_basic.py` to crontab so it starts automatically when the Pi boots:
+Install the systemd service so `momir_basic.py` starts when the Pi boots, is restarted if it crashes, and logs to the journal:
 
 ```bash
-crontab -e
+sudo cp deploy/momir.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momir
 ```
 
-Add the following line:
+The unit assumes the user `pi` and the repository in `/home/pi/momir_thermal_printer`: edit `User`, `WorkingDirectory` and `ExecStart` in `deploy/momir.service` first if yours differ.
 
+Useful commands:
+
+```bash
+systemctl status momir          # is it running?
+journalctl -u momir -f          # follow the logs
+sudo systemctl restart momir    # after editing settings.cfg or updating the code
 ```
-@reboot python3 /home/pi/momir_thermal_printer/momir_basic.py
-```
+
+If you previously used a `@reboot` crontab entry, remove it (`crontab -e`) so the program does not start twice.
 
 ---
 
@@ -142,12 +147,17 @@ Add the following line:
 ```
 .
 ├── momir_basic.py                      Main program (runs on the Pi)
+├── requirements.txt                    Python dependencies
 ├── settings.cfg.example                Configuration template
 ├── scripts/                            Card database / image preparation
 │   ├── update.sh
 │   ├── get_image_urls_from_scryfall.py
 │   ├── download_images_from_scryfall.py
 │   └── convert_images.py
+├── deploy/
+│   └── momir.service                   systemd unit (start on boot)
+├── tests/
+│   └── test_scripts.py
 └── assets/
     ├── FredokaOne-Regular.ttf
     └── wiring.jpg
@@ -158,9 +168,11 @@ Add the following line:
 | `momir_basic.py` | Main program: runs on the Pi, reads buttons, drives the OLED and thermal printer |
 | `requirements.txt` | Python dependencies (`pip install -r requirements.txt`) |
 | `settings.cfg.example` | Configuration template — copy to `settings.cfg` (at the repository root) and set your paths |
-| `scripts/update.sh` | All-in-one update script: download, fetch URLs, download images, convert to BMP |
-| `scripts/get_image_urls_from_scryfall.py` | Queries the Scryfall API and writes `creatures_image_urls.json` |
+| `scripts/update.sh` | All-in-one update script: list creatures, download images, convert to BMP |
+| `scripts/get_image_urls_from_scryfall.py` | Downloads the Scryfall bulk data and writes the creature list (`creatures_image_urls.json`) |
 | `scripts/download_images_from_scryfall.py` | Downloads card images in parallel; skips cards already converted |
 | `scripts/convert_images.py` | Converts downloaded JPGs to 384 px wide monochrome BMPs (Pillow, parallel) |
+| `deploy/momir.service` | systemd unit that starts `momir_basic.py` on boot |
+| `tests/test_scripts.py` | Unit tests of the scripts (`python -m unittest discover -s tests`) |
 | `assets/FredokaOne-Regular.ttf` | Font used by the OLED display |
 | `assets/wiring.jpg` | Wiring reference diagram |
