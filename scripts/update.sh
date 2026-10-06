@@ -10,8 +10,7 @@
 #
 # Prerequisites:
 #   - settings.cfg (copy settings.cfg.example and set your paths)
-#   - python3 with project dependencies: pip install ijson requests
-#   - ImageMagick (convert)
+#   - python3 with project dependencies: pip install -r requirements.txt
 #   - curl
 
 set -e
@@ -84,8 +83,11 @@ echo ""
 # ---------------------------------------------------------------------------
 echo "[3/5] Downloading new card images to ${IMAGES_DIR}..."
 mkdir -p "${IMAGES_DIR}"
-python3 download_images_from_scryfall.py --data-dir "${DATA_DIR}" --images-dir "${IMAGES_DIR}"
-echo "Images downloaded."
+DOWNLOAD_FAILED=0
+# Failed downloads must not prevent converting the images that did arrive
+python3 download_images_from_scryfall.py --data-dir "${DATA_DIR}" --images-dir "${IMAGES_DIR}" \
+    || DOWNLOAD_FAILED=1
+echo "Image download step finished."
 echo ""
 
 # ---------------------------------------------------------------------------
@@ -93,27 +95,7 @@ echo ""
 # ---------------------------------------------------------------------------
 echo "[4/5] Converting new images to monochrome BMP..."
 
-# Collect all JPGs that have no corresponding BMP yet
-mapfile -t JPG_FILES < <(
-    find "${IMAGES_DIR}" -mindepth 2 -maxdepth 2 -name "*.jpg" | while IFS= read -r jpg; do
-        bmp="${jpg%/*}/converted_files/$(basename "${jpg}" .jpg).bmp"
-        [ ! -f "$bmp" ] && echo "$jpg"
-    done
-)
-
-if [ ${#JPG_FILES[@]} -eq 0 ]; then
-    echo "No new images to convert."
-else
-    echo "Converting ${#JPG_FILES[@]} image(s) in parallel..."
-    printf '%s\n' "${JPG_FILES[@]}" | xargs -P "$(nproc)" -I{} bash -c '
-        jpg="$1"
-        dir="$(dirname "$jpg")"
-        name="$(basename "$jpg" .jpg)"
-        out="${dir}/converted_files/${name}.bmp"
-        mkdir -p "${dir}/converted_files"
-        convert "$jpg" -resize 384x -colorspace Gray -monochrome "$out"
-    ' _ {}
-fi
+python3 convert_images.py --images-dir "${IMAGES_DIR}"
 
 echo "Conversion done."
 echo ""
@@ -143,6 +125,12 @@ fi
 
 echo "Cleanup done."
 echo ""
+
+if [ "${DOWNLOAD_FAILED}" -ne 0 ]; then
+    echo "=== Update finished with errors ==="
+    echo "Some images could not be downloaded (see messages above). Re-run this script to retry."
+    exit 1
+fi
 
 echo "=== Update complete! ==="
 echo "Converted images are in ${IMAGES_DIR}/<cmc>/converted_files/"

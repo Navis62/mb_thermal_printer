@@ -81,7 +81,9 @@ def make_session():
 
 
 def get_image_url(card):
-    """Return the 'large' image URL of a Scryfall card, or None if it has none.
+    """Return the 'normal' (488x680) image URL of a Scryfall card, or None if it has none.
+
+    That is plenty for a 384 px wide thermal print and about half the size of 'large'.
 
     Double-faced cards (transform, modal DFC) have no top-level "image_uris":
     the images are on each face, so fall back to the front face.
@@ -90,7 +92,7 @@ def get_image_url(card):
     if not image_uris:
         faces = card.get("card_faces") or [{}]
         image_uris = faces[0].get("image_uris")
-    return image_uris.get("large") if image_uris else None
+    return image_uris.get("normal") if image_uris else None
 
 
 def fetch_batch(session, oracle_ids):
