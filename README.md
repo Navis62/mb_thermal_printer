@@ -2,7 +2,7 @@
 
 A Raspberry Pi-powered thermal printer that plays [Momir Basic](https://mtg.fandom.com/wiki/Momir_Basic): press a button to set your mana value, then print a random creature card at that cost.
 
-![Wiring diagram](wiring.jpg)
+![Wiring diagram](assets/wiring.jpg)
 
 > **Note:** The wiring diagram above was made with a Raspberry Pi 4. The GPIO pinout is identical on the Raspberry Pi Zero 2 W — the same connections apply.
 
@@ -75,8 +75,8 @@ All pins use BOARD numbering (physical pin numbers, not BCM GPIO numbers).
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/Navis62/mb_thermal_printer.git
-cd mb_thermal_printer
+git clone https://github.com/arthur-lagenebre/momir_thermal_printer.git
+cd momir_thermal_printer
 ```
 
 ### 2. Configure paths
@@ -99,13 +99,13 @@ IMAGES_DIR=/home/pi/Desktop/momir
 DATA_DIR=/home/pi/momir_data
 
 # Path to the TrueType font used by the OLED display
-FONT_PATH=/home/pi/mb_thermal_printer/FredokaOne-Regular.ttf
+FONT_PATH=/home/pi/momir_thermal_printer/assets/FredokaOne-Regular.ttf
 ```
 
 ### 3. Download and convert card images
 
 ```bash
-./update.sh
+./scripts/update.sh
 ```
 
 This single script:
@@ -127,20 +127,34 @@ crontab -e
 Add the following line:
 
 ```
-@reboot python3 /home/pi/mb_thermal_printer/momir_basic.py
+@reboot python3 /home/pi/momir_thermal_printer/momir_basic.py
 ```
 
 ---
 
 ## File reference
 
+```
+.
+├── momir_basic.py                      Main program (runs on the Pi)
+├── settings.cfg.example                Configuration template
+├── scripts/                            Card database / image preparation
+│   ├── update.sh
+│   ├── get_image_urls_from_scryfall.py
+│   ├── download_images_from_scryfall.py
+│   └── convert_images_to_monochrome.sh
+└── assets/
+    ├── FredokaOne-Regular.ttf
+    └── wiring.jpg
+```
+
 | File | Description |
 |------|-------------|
-| `settings.cfg.example` | Configuration template — copy to `settings.cfg` and set your paths |
-| `update.sh` | All-in-one update script: download, fetch URLs, download images, convert to BMP |
-| `get_image_urls_from_scryfall.py` | Queries the Scryfall API and writes `creatures_image_urls.json` |
-| `download_images_from_scryfall.py` | Downloads card images in parallel; skips cards already converted |
-| `convert_images_to_monochrome.sh` | Standalone script to convert JPGs to monochrome BMP (called by `update.sh`) |
 | `momir_basic.py` | Main program: runs on the Pi, reads buttons, drives the OLED and thermal printer |
-| `FredokaOne-Regular.ttf` | Font used by the OLED display |
-| `wiring.jpg` | Wiring reference diagram |
+| `settings.cfg.example` | Configuration template — copy to `settings.cfg` (at the repository root) and set your paths |
+| `scripts/update.sh` | All-in-one update script: download, fetch URLs, download images, convert to BMP |
+| `scripts/get_image_urls_from_scryfall.py` | Queries the Scryfall API and writes `creatures_image_urls.json` |
+| `scripts/download_images_from_scryfall.py` | Downloads card images in parallel; skips cards already converted |
+| `scripts/convert_images_to_monochrome.sh` | Standalone script to convert JPGs to monochrome BMP (not used by `update.sh`) |
+| `assets/FredokaOne-Regular.ttf` | Font used by the OLED display |
+| `assets/wiring.jpg` | Wiring reference diagram |

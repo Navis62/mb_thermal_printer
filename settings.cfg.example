@@ -17,5 +17,5 @@ DATA_DIR=/home/pi/momir_data
 
 # Path to the TrueType font used by the OLED display.
 # The bundled font can be referenced relative to the project directory.
-# Example: /home/pi/mb_thermal_printer/FredokaOne-Regular.ttf
-FONT_PATH=/home/pi/mb_thermal_printer/FredokaOne-Regular.ttf
+# Example: /home/pi/momir_thermal_printer/assets/FredokaOne-Regular.ttf
+FONT_PATH=/home/pi/momir_thermal_printer/assets/FredokaOne-Regular.ttf

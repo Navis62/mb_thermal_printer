@@ -16,7 +16,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SETTINGS_FILE="${SCRIPT_DIR}/settings.cfg"
+ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
+SETTINGS_FILE="${ROOT_DIR}/settings.cfg"
 
 if [ ! -f "${SETTINGS_FILE}" ]; then
     echo "Error: settings.cfg not found."
