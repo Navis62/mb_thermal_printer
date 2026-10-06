@@ -1,0 +1,12 @@
+# Python dependencies for the Momir Basic thermal printer.
+# Install with: pip install -r requirements.txt
+
+# Card database / image preparation (scripts/)
+ijson>=3        # kvitems() is required
+requests
+
+# Raspberry Pi program (momir_basic.py)
+python-escpos
+RPi.GPIO
+luma.oled
+Pillow

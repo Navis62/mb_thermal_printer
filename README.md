@@ -59,15 +59,14 @@ All pins use BOARD numbering (physical pin numbers, not BCM GPIO numbers).
 
 ## Prerequisites
 
-- Python 3 with the following packages (`ijson` 3 or later is required):
+- Python 3 with the packages listed in `requirements.txt` (`ijson` 3 or later is required):
   ```bash
-  pip install "ijson>=3" requests python-escpos RPi.GPIO luma.oled Pillow
+  pip install -r requirements.txt
   ```
   On Raspberry Pi OS Bookworm and later, `pip` refuses to install system-wide
   (PEP 668): use a virtual environment (`python3 -m venv --system-site-packages .venv`),
   or add `--break-system-packages`. If you use a virtual environment, run
   `momir_basic.py` with `.venv/bin/python` (also in the crontab entry below).
-- [ImageMagick](https://imagemagick.org) (`convert` command)
 - `curl` and `gunzip`
 - The I²C bus and the hardware serial port enabled (`sudo raspi-config` →
   *Interface Options*): **I2C** on, **Serial Port** → login shell *off*,
@@ -116,7 +115,7 @@ FONT_PATH=/home/pi/momir_thermal_printer/assets/FredokaOne-Regular.ttf
 This single script:
 1. Downloads the latest `AtomicCards.json` from MTGJSON
 2. Queries Scryfall for creature image URLs
-3. Downloads only **new** images (cards already converted to BMP are skipped)
+3. Downloads only **new** images (cards already converted to BMP are skipped; failed downloads are retried, and reported at the end)
 4. Converts new JPGs to monochrome BMP in parallel using all CPU cores
 5. Cleans up temporary files: the downloaded JPGs, `AtomicCards.json` and `creatures_image_urls.json` are deleted once converted
 
@@ -147,7 +146,8 @@ Add the following line:
 ├── scripts/                            Card database / image preparation
 │   ├── update.sh
 │   ├── get_image_urls_from_scryfall.py
-│   └── download_images_from_scryfall.py
+│   ├── download_images_from_scryfall.py
+│   └── convert_images.py
 └── assets/
     ├── FredokaOne-Regular.ttf
     └── wiring.jpg
@@ -156,9 +156,11 @@ Add the following line:
 | File | Description |
 |------|-------------|
 | `momir_basic.py` | Main program: runs on the Pi, reads buttons, drives the OLED and thermal printer |
+| `requirements.txt` | Python dependencies (`pip install -r requirements.txt`) |
 | `settings.cfg.example` | Configuration template — copy to `settings.cfg` (at the repository root) and set your paths |
 | `scripts/update.sh` | All-in-one update script: download, fetch URLs, download images, convert to BMP |
 | `scripts/get_image_urls_from_scryfall.py` | Queries the Scryfall API and writes `creatures_image_urls.json` |
 | `scripts/download_images_from_scryfall.py` | Downloads card images in parallel; skips cards already converted |
+| `scripts/convert_images.py` | Converts downloaded JPGs to 384 px wide monochrome BMPs (Pillow, parallel) |
 | `assets/FredokaOne-Regular.ttf` | Font used by the OLED display |
 | `assets/wiring.jpg` | Wiring reference diagram |

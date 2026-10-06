@@ -13,11 +13,11 @@ Les identifiants (B = bug, A = amélioration, N = nettoyage) servent à référe
 - [x] **B2** 🔴 `scripts/get_image_urls_from_scryfall.py` : les cartes double-face (transform, MDFC) n'ont pas d'`image_uris` racine et sont ignorées. Repli sur `card_faces[0]["image_uris"]`.
 - [x] **B3** 🔴 `scripts/get_image_urls_from_scryfall.py` : en-têtes `User-Agent` / `Accept` manquants (exigés par Scryfall), pas de gestion du 429 ni de retry, lot en échec affiché comme « done ».
 - [x] **B4** 🟠 `scripts/update.sh` : `~` non expansé dans `IMAGES_DIR` / `DATA_DIR` (le parsing `grep` ne gère pas non plus les guillemets ni les commentaires en fin de ligne).
-- [ ] **B5** 🟠 `momir_basic.py` : le bouton PRINT n'a pas de détection de front, un appui prolongé réimprime une carte.
-- [ ] **B6** 🟠 `momir_basic.py` : messages d'erreur OLED tronqués / illisibles (`str(e)[:20]`), « Already at max! » probablement rogné. Utiliser des messages courts prédéfinis.
-- [ ] **B7** 🟠 `momir_basic.py` : pas de handler `SIGTERM`, `GPIO.cleanup()` non exécuté à l'arrêt par `kill` / systemd ; traceback sur `Ctrl+C`.
-- [ ] **B8** 🟢 `scripts/download_images_from_scryfall.py` : fichiers temporaires `tmpXXXX` orphelins si le script est tué (ajouter un suffixe `.part` et les nettoyer).
-- [ ] **B9** 🟢 `scripts/download_images_from_scryfall.py` : code retour toujours 0 malgré des échecs, pas de retry / backoff sur 429/5xx.
+- [x] **B5** 🟠 `momir_basic.py` : le bouton PRINT n'a pas de détection de front, un appui prolongé réimprime une carte.
+- [x] **B6** 🟠 `momir_basic.py` : messages d'erreur OLED tronqués / illisibles (`str(e)[:20]`), « Already at max! » probablement rogné. Utiliser des messages courts prédéfinis.
+- [x] **B7** 🟠 `momir_basic.py` : pas de handler `SIGTERM`, `GPIO.cleanup()` non exécuté à l'arrêt par `kill` / systemd ; traceback sur `Ctrl+C`.
+- [x] **B8** 🟢 `scripts/download_images_from_scryfall.py` : fichiers temporaires `tmpXXXX` orphelins si le script est tué (ajouter un suffixe `.part` et les nettoyer).
+- [x] **B9** 🟢 `scripts/download_images_from_scryfall.py` : code retour toujours 0 malgré des échecs, pas de retry / backoff sur 429/5xx.
 - [x] **B10** 🟢 `scripts/get_image_urls_from_scryfall.py` : `scryfallOracleId` non protégé (`KeyError` = plantage complet).
 - [ ] **B11** 🟢 `scripts/get_image_urls_from_scryfall.py` : les cartes Alchemy digitales (sans préfixe `A-`) ne sont pas filtrées.
 
@@ -25,10 +25,10 @@ Les identifiants (B = bug, A = amélioration, N = nettoyage) servent à référe
 
 ### Pipeline de données
 - [ ] **A1** 🟠 Remplacer MTGJSON par le bulk `oracle-cards` de Scryfall (supprime un téléchargement et ~25 appels API par lot).
-- [ ] **A2** 🟠 Télécharger l'image `normal` (488 px) au lieu de `large` (suffisant pour 384 px d'impression).
-- [ ] **A3** 🟢 Sauter le téléchargement si le JPG existe déjà (conversion précédemment interrompue).
+- [x] **A2** 🟠 Télécharger l'image `normal` (488 px) au lieu de `large` (suffisant pour 384 px d'impression).
+- [x] **A3** 🟢 Sauter le téléchargement si le JPG existe déjà (conversion précédemment interrompue).
 - [ ] **A4** 🟢 Écriture atomique + `encoding='utf-8'` pour `creatures_image_urls.json`.
-- [ ] **A5** 🟢 Remplacer ImageMagick par Pillow (une dépendance en moins, dithering Floyd-Steinberg contrôlable).
+- [x] **A5** 🟢 Remplacer ImageMagick par Pillow (une dépendance en moins, dithering Floyd-Steinberg contrôlable).
 - [ ] **A6** 🟢 Élaguer les BMP des cartes qui ne sont plus dans la liste.
 
 ### Programme principal
@@ -41,7 +41,7 @@ Les identifiants (B = bug, A = amélioration, N = nettoyage) servent à référe
 - [ ] **A13** 🟢 `FONT_PATH` relatif au dépôt par défaut.
 
 ### Packaging et tests
-- [ ] **A14** 🟠 Ajouter un `requirements.txt`.
+- [x] **A14** 🟠 Ajouter un `requirements.txt`.
 - [ ] **A15** 🟢 Tests unitaires : `is_valid_creature`, `sanitise_name`, sélection d'image (`momir_basic` testable avec des mocks).
 
 ## 🧹 Nettoyages
@@ -61,6 +61,9 @@ Les identifiants (B = bug, A = amélioration, N = nettoyage) servent à référe
 ## ✅ Fait
 
 - [x] 2026-10-06 — Analyse du projet et rédaction de cette liste.
+- [x] 2026-10-06 — A5 : nouveau `scripts/convert_images.py` (Pillow, parallèle, écriture atomique via `.part`, code retour 1 en cas d'échec) ; ImageMagick n'est plus requis, `update.sh` et README mis à jour. Testé avec de vrais JPG (BMP 1 bit de 384×535, rendu vérifié visuellement, JPG corrompu, BMP existant, `.part` périmé) ; non comparé à ImageMagick, absent de cette machine.
+- [x] 2026-10-06 — `scripts/download_images_from_scryfall.py` : B8 (fichiers `.part` nettoyés au démarrage), B9 (retry/backoff 429/5xx, code retour 1 en cas d'échec ; `update.sh` convertit quand même les images reçues puis termine en erreur), A3 (JPG déjà téléchargés non retéléchargés). A2 : image `normal` (488 px) au lieu de `large`. A14 : `requirements.txt`. Testé avec un serveur HTTP local (succès, 404, JPG existant, BMP existant, `.part` périmé).
+- [x] 2026-10-06 — `momir_basic.py` : B5 (attente du relâchement du bouton PRINT après impression), B6 (messages OLED courts et mesurés avec la vraie police : `Max reached`, `Min reached`, `No cards`, `Print error` ; l'erreur détaillée reste dans les logs), B7 (SIGTERM converti en sortie normale, `Ctrl+C` sans traceback, `GPIO.cleanup()` garanti). Testé avec des faux modules matériel ; pas encore testé sur le Pi.
 - [x] 2026-10-06 — B4 : `scripts/update.sh` expanse `~` comme `momir_basic.py` (testé avec CRLF, espaces et `~`). N2 : `.gitattributes` + renormalisation (`momir_basic.py` passe en LF). N3 : étapes numérotées `/5`, en-tête complété. N1 : `convert_images_to_monochrome.sh` supprimé. N4, N6, N7 : README (doublon `---`, I²C/série/PEP 668, étape 5 de `update.sh`). N8 : `.gitignore` (`__pycache__/`, `*.pyc`, `.venv/`) ; le motif `tmp*` n'a pas été ajouté, les temporaires étant écrits dans `IMAGES_DIR`, hors dépôt (voir B8).
 - [x] 2026-10-06 — Dépôt GitHub : nouveau dépôt privé `arthur-lagenebre/momir_thermal_printer` (origin), ancien dépôt `Navis62/mb_thermal_printer` conservé comme remote `upstream` ; URL de clone et chemins `/home/pi/...` du README et de `settings.cfg.example` renommés en `momir_thermal_printer` (N5).
 - [x] 2026-10-06 — Corrections B1, B2, B3, B10 dans `scripts/get_image_urls_from_scryfall.py` : lecture en streaming (`kvitems`, seul l'oracle ID est gardé), repli sur `card_faces[0]` pour les cartes double-face, en-têtes Scryfall + retry/backoff 429/5xx (timeout 30 s, lots en échec signalés), `scryfallOracleId` protégé. Testé avec un faux `AtomicCards.json` et une API simulée ; nécessite `ijson>=3`.
