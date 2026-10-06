@@ -9,7 +9,7 @@
 # Example: /home/pi/Desktop/momir
 IMAGES_DIR=/home/pi/Desktop/momir
 
-# Directory where intermediate data files are stored (AtomicCards.json,
+# Directory where intermediate data files are stored (Scryfall bulk file,
 # creatures_image_urls.json). Keeping this outside the repository avoids
 # committing large data files.
 # Example: /home/pi/momir_data
