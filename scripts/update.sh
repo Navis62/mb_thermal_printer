@@ -69,6 +69,8 @@ _get_setting() {
 
 # Expand a leading "~" like momir_basic.py does (os.path.expanduser)
 _expand_tilde() {
+    # The "~" is matched literally on purpose (it is what settings.cfg contains)
+    # shellcheck disable=SC2088
     case "$1" in
         "~"|"~/"*) printf '%s' "${HOME}${1#\~}" ;;
         *)         printf '%s' "$1" ;;
