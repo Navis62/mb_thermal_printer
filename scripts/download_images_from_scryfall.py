@@ -1,5 +1,6 @@
 import glob
 import os
+import re
 import argparse
 import json
 import sys
@@ -59,8 +60,9 @@ def parse_args():
 
 
 def sanitise_name(card_name):
-    """Sanitise a card name for use as a filename."""
-    return card_name.replace("'", "").replace('"', "").replace("/", "")
+    """Sanitise a card name for use as a filename (also valid on Windows)."""
+    name = re.sub(r'[\'"/\\:*?<>|]', "", card_name)
+    return name.rstrip(". ") or "card"
 
 
 def bmp_exists(images_dir, cmc, card_name):

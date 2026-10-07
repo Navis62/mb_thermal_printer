@@ -124,6 +124,11 @@ class DownloadHelpersTest(unittest.TestCase):
             self.assertTrue(download.bmp_exists(root, 2, "Bear"))
             self.assertEqual(download.jpg_path(root, 2, "Bear"), os.path.join(root, "2", "Bear.jpg"))
 
+    def test_sanitise_name_removes_windows_forbidden_chars(self):
+        self.assertEqual(download.sanitise_name("Summon: Choco/Mog"), "Summon ChocoMog")
+        self.assertEqual(download.sanitise_name('What? "Who*" <A|B>'), "What Who AB")
+        self.assertEqual(download.sanitise_name("Bear."), "Bear")
+
     def test_cleanup_partial_files(self):
         with tempfile.TemporaryDirectory() as root:
             os.makedirs(os.path.join(root, "2"))

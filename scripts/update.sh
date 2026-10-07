@@ -10,6 +10,9 @@
 # Prerequisites:
 #   - settings.cfg (copy settings.cfg.example and set your paths)
 #   - python3 with project dependencies: pip install -r requirements.txt
+#
+# Optional: CONVERT_WORKERS=2 ./update.sh limits the conversion processes
+# (default: all CPUs) on low-memory boards such as the Pi Zero 2.
 
 set -e
 
@@ -80,7 +83,8 @@ echo ""
 # ---------------------------------------------------------------------------
 echo "[3/4] Converting new images to monochrome BMP..."
 
-python3 convert_images.py --images-dir "${IMAGES_DIR}"
+# CONVERT_WORKERS limits the parallel processes (e.g. CONVERT_WORKERS=2 on a Pi Zero 2)
+python3 convert_images.py --images-dir "${IMAGES_DIR}" --workers "${CONVERT_WORKERS:-$(nproc)}"
 
 echo "Conversion done."
 echo ""
