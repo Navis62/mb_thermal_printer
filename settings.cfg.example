@@ -28,3 +28,8 @@ DATA_DIR=/home/pi/momir_data
 # Optional. Set to true if your buttons connect the pin to GND when pressed
 # (e.g. the counter climbs by itself with the default wiring). Default: false.
 # BUTTONS_ACTIVE_LOW=true
+
+# Optional. Blank lines fed after each card so that its bottom comes out of the
+# printer and can be torn off. Increase it if the end of the card stays inside.
+# Default: 6.
+# FEED_LINES=6

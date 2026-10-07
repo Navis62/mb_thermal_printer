@@ -178,6 +178,13 @@ class PrintRandomCardTest(unittest.TestCase):
             mb.print_random_card(mock.MagicMock(), None, None, 6)
         self.assertEqual(self.dm.call_args.args[2], mb.MSG_ERROR)
 
+    def test_feeds_blank_lines_after_the_card(self):
+        open(os.path.join(self.folder(9), "a.bmp"), "w").close()
+        printer = mock.MagicMock()
+        with mock.patch.object(mb, "_print_image"), mock.patch.object(mb, "FEED_LINES", 9):
+            mb.print_random_card(printer, None, None, 9)
+        self.assertEqual(printer.textln.call_args_list, [mock.call("")] * 9)
+
     def test_only_complete_bmps_are_candidates(self):
         folder = self.folder(7)
         for name in ("a.bmp", "b.bmp.part", "notes.txt"):

@@ -54,6 +54,8 @@ FONT_PATH   = resolve_font_path(_config.get('DEFAULT', 'FONT_PATH', fallback='')
 OLED_TIMEOUT = _config.getint('DEFAULT', 'OLED_TIMEOUT', fallback=300)
 # Button wiring: false = pin pulled to 3.3 V when pressed (default), true = pin pulled to GND
 BUTTONS_ACTIVE_LOW = _config.getboolean('DEFAULT', 'BUTTONS_ACTIVE_LOW', fallback=False)
+# Blank lines fed after a card, so that its bottom clears the printer and can be torn off
+FEED_LINES = _config.getint('DEFAULT', 'FEED_LINES', fallback=6)
 
 # ---------------------------------------------------------------------------
 # Hardware constants
@@ -159,10 +161,9 @@ def print_random_card(printer, display, font16, cmc):
             raise FileNotFoundError(f"No converted images found in {path}")
         image_path = os.path.join(path, random.choice(files))
         _print_image(printer, image_path)
-        # Feed paper
-        printer.textln("")
-        printer.textln("")
-        printer.textln("")
+        # Feed paper so that the whole card comes out of the printer
+        for _ in range(FEED_LINES):
+            printer.textln("")
     except FileNotFoundError as e:
         # Missing CMC folder or no converted BMP in it
         logging.error("No cards available: %s", e)

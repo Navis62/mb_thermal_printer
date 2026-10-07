@@ -5,3 +5,5 @@
 
 *.ttf binary
 *.jpg binary
+
+*.service text eol=lf

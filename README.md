@@ -70,6 +70,24 @@ All pins use BOARD numbering (physical pin numbers, not BCM GPIO numbers).
 
 ---
 
+## Quick install (Raspberry Pi OS)
+
+Once the hardware is wired, one script does the whole first-time installation:
+
+```bash
+git clone https://github.com/Navis62/mb_thermal_printer.git
+cd mb_thermal_printer
+./setup.sh
+```
+
+It installs the system packages, enables the I²C bus and the serial port (and turns the serial login console off), gives your user access to the hardware, creates the Python virtual environment, creates `settings.cfg`, and installs the systemd service so the program starts on boot — with your user name and folder filled in. It is safe to run again. Run it as your normal user, not with `sudo`; it asks for your password when needed, and offers to reboot at the end (needed the first time).
+
+Then get the card images (step 3 below, or prepare them on a PC) and, if the mana counter climbs by itself, set `BUTTONS_ACTIVE_LOW=true` in `settings.cfg`.
+
+The sections below describe the same steps one by one, in case you prefer to do them by hand.
+
+---
+
 ## Prerequisites
 
 - Python 3 with the packages listed in `requirements.txt`:
@@ -86,7 +104,7 @@ All pins use BOARD numbering (physical pin numbers, not BCM GPIO numbers).
 
 ---
 
-## Setup
+## Manual setup
 
 ### 1. Clone the repository
 
@@ -161,7 +179,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now momir
 ```
 
-The unit assumes the user `pi` and the repository in `/home/pi/mb_thermal_printer`: edit `User`, `WorkingDirectory` and `ExecStart` in `deploy/momir.service` first if yours differ.
+The unit assumes the user `pi` and the repository in `/home/pi/mb_thermal_printer`: edit `User`, `WorkingDirectory` and `ExecStart` in `deploy/momir.service` first if yours differ (`setup.sh` does this for you; use the virtual environment's Python in `ExecStart`: `<repository>/.venv/bin/python`).
 
 Useful commands:
 
@@ -179,6 +197,7 @@ If you previously used a `@reboot` crontab entry, remove it (`crontab -e`) so th
 
 ```
 .
+├── setup.sh                            First-time installation on the Pi
 ├── momir_basic.py                      Main program (runs on the Pi)
 ├── requirements.txt                    Python dependencies
 ├── settings.cfg.example                Configuration template
@@ -202,6 +221,7 @@ If you previously used a `@reboot` crontab entry, remove it (`crontab -e`) so th
 
 | File | Description |
 |------|-------------|
+| `setup.sh` | First-time installation: packages, I²C/serial, groups, virtual environment, `settings.cfg`, systemd service |
 | `momir_basic.py` | Main program: runs on the Pi, reads buttons, drives the OLED and thermal printer |
 | `requirements.txt` | Python dependencies (`pip install -r requirements.txt`) |
 | `settings.cfg.example` | Configuration template — copy to `settings.cfg` (at the repository root) and set your paths |
