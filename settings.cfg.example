@@ -24,3 +24,7 @@ DATA_DIR=/home/pi/momir_data
 # Optional. Seconds of inactivity before the OLED is switched off to avoid
 # burn-in (any button wakes it up; that press does nothing else). 0 = never.
 # OLED_TIMEOUT=300
+
+# Optional. Set to true if your buttons connect the pin to GND when pressed
+# (e.g. the counter climbs by itself with the default wiring). Default: false.
+# BUTTONS_ACTIVE_LOW=true

@@ -52,6 +52,8 @@ IMAGES_DIR  = os.path.expanduser(_config.get('DEFAULT', 'IMAGES_DIR'))
 FONT_PATH   = resolve_font_path(_config.get('DEFAULT', 'FONT_PATH', fallback=''))
 # Seconds of inactivity before the OLED is switched off (burn-in); 0 = never
 OLED_TIMEOUT = _config.getint('DEFAULT', 'OLED_TIMEOUT', fallback=300)
+# Button wiring: false = pin pulled to 3.3 V when pressed (default), true = pin pulled to GND
+BUTTONS_ACTIVE_LOW = _config.getboolean('DEFAULT', 'BUTTONS_ACTIVE_LOW', fallback=False)
 
 # ---------------------------------------------------------------------------
 # Hardware constants
@@ -94,12 +96,14 @@ def init_hardware():
     font16 = ImageFont.truetype(FONT_PATH, 16)
 
     # GPIO buttons
-    # Wiring: buttons connect the pin to 3.3 V (active-high).
-    # PUD_DOWN holds the line LOW by default; a button press pulls it HIGH.
+    # Default wiring: buttons connect the pin to 3.3 V (active-high); PUD_DOWN holds the
+    # line LOW and a press pulls it HIGH. With BUTTONS_ACTIVE_LOW the buttons connect the
+    # pin to GND instead: PUD_UP holds the line HIGH and a press pulls it LOW.
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BOARD)
+    pull = GPIO.PUD_UP if BUTTONS_ACTIVE_LOW else GPIO.PUD_DOWN
     for pin in (BUTTON_UP_PIN, BUTTON_DOWN_PIN, BUTTON_PRINT_PIN):
-        GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        GPIO.setup(pin, GPIO.IN, pull_up_down=pull)
 
     return printer, display, font16
 
@@ -181,9 +185,14 @@ def _handle_sigterm(signum, frame):
     """Turn SIGTERM (kill, systemd stop) into a normal exit so cleanup runs."""
     raise SystemExit(0)
 
+def _is_pressed(pin):
+    """Return True if the given button is currently pressed."""
+    pressed_level = GPIO.LOW if BUTTONS_ACTIVE_LOW else GPIO.HIGH
+    return GPIO.input(pin) == pressed_level
+
 def _any_pressed(*pins):
     """Return True if any of the given buttons is currently pressed."""
-    return any(GPIO.input(pin) == GPIO.HIGH for pin in pins)
+    return any(_is_pressed(pin) for pin in pins)
 
 def _wait_for_release(*pins):
     """Block until all the given buttons are released."""
@@ -224,7 +233,7 @@ def main():
                     _wait_for_release(*all_buttons)
                 continue
 
-            if GPIO.input(BUTTON_UP_PIN) == GPIO.HIGH:
+            if _is_pressed(BUTTON_UP_PIN):
                 last_activity = time.monotonic()
                 if cmc < CMC_MAX:
                     cmc += 1
@@ -233,7 +242,7 @@ def main():
                 else:
                     display_message(display, font16, MSG_AT_MAX, cmc)
 
-            elif GPIO.input(BUTTON_DOWN_PIN) == GPIO.HIGH:
+            elif _is_pressed(BUTTON_DOWN_PIN):
                 last_activity = time.monotonic()
                 if cmc > CMC_MIN:
                     cmc -= 1
@@ -242,7 +251,7 @@ def main():
                 else:
                     display_message(display, font16, MSG_AT_MIN, cmc)
 
-            elif GPIO.input(BUTTON_PRINT_PIN) == GPIO.HIGH:
+            elif _is_pressed(BUTTON_PRINT_PIN):
                 display_printing(display, font16, cmc)
                 print_random_card(printer, display, font16, cmc)
                 display_cmc(display, font16, cmc)

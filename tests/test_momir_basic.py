@@ -117,6 +117,16 @@ class ButtonsTest(MainLoopCase):
         GPIO.cleanup.assert_called()
 
 
+class ActiveLowTest(unittest.TestCase):
+    def test_pressed_level_follows_the_wiring(self):
+        GPIO.input.side_effect = lambda pin: 0
+        with mock.patch.object(mb, "BUTTONS_ACTIVE_LOW", True):
+            self.assertTrue(mb._is_pressed(mb.BUTTON_UP_PIN))
+        with mock.patch.object(mb, "BUTTONS_ACTIVE_LOW", False):
+            self.assertFalse(mb._is_pressed(mb.BUTTON_UP_PIN))
+        GPIO.input.side_effect = None
+
+
 class OledSleepTest(MainLoopCase):
     def run_with_clock(self, pressed, clock, **kw):
         """main() with a controllable time.monotonic()."""
