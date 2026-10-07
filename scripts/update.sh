@@ -16,6 +16,9 @@
 
 set -e
 
+# Card names contain accents/symbols: never crash on a non-UTF-8 terminal locale
+export PYTHONIOENCODING=utf-8
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 SETTINGS_FILE="${ROOT_DIR}/settings.cfg"

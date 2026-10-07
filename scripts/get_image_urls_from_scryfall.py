@@ -70,7 +70,7 @@ def download_bulk_file(session, dest_path):
         raise RuntimeError(f"No 'jsonl_download_uri' in the Scryfall bulk-data answer: {sorted(info)}")
 
     size_mb = info.get('compressed_size', 0) / 1e6
-    print(f"Downloading {url} ({size_mb:.0f} MB)…")
+    print(f"Downloading {url} ({size_mb:.0f} MB)...")
 
     def write(f):
         with session.get(url, timeout=60, stream=True) as r:
@@ -159,7 +159,7 @@ def main():
     with make_session() as session:
         download_bulk_file(session, bulk_path)
 
-    print("Extracting creatures…")
+    print("Extracting creatures...")
     records = load_creature_records(bulk_path)
 
     write_atomically(output_path, lambda f: f.write(json.dumps(records).encode('utf-8')))
