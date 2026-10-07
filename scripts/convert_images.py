@@ -63,6 +63,46 @@ def cleanup_partial_files(images_dir):
             pass
 
 
+def atkinson_dither(gray):
+    """Return a 1-bit copy of a greyscale image, dithered with the Atkinson algorithm.
+
+    Atkinson spreads only 3/4 of the quantisation error, so near-black and near-white
+    areas end up pure black or pure white instead of speckled, and highlights stay clean.
+    On thermal paper, where isolated dots do not fuse, that prints much better than
+    Floyd-Steinberg (which leaves a visible grid in dark areas).
+    """
+    width, height = gray.size
+    stride = width + 3                       # 1 padding column on the left, 2 on the right
+    buf = [0.0] * (stride * (height + 2))    # and 2 padding rows at the bottom
+    data = gray.tobytes()
+    for y in range(height):
+        start = y * stride + 1
+        buf[start:start + width] = data[y * width:(y + 1) * width]
+    out = bytearray(width * height)
+    for y in range(height):
+        row = y * stride + 1
+        below = row + stride
+        below2 = below + stride
+        out_row = y * width
+        for x in range(width):
+            value = buf[row + x]
+            if value > 127:
+                out[out_row + x] = 255
+                error = (value - 255) / 8
+            else:
+                error = value / 8
+            if error:
+                i = row + x
+                buf[i + 1] += error
+                buf[i + 2] += error
+                j = below + x
+                buf[j - 1] += error
+                buf[j] += error
+                buf[j + 1] += error
+                buf[below2 + x] += error
+    return Image.frombytes("L", (width, height), bytes(out)).convert("1", dither=Image.Dither.NONE)
+
+
 def convert_image(jpg):
     """Convert one JPG to a 1-bit BMP, PRINTER_WIDTH dots wide; return None or an error message.
 
@@ -80,7 +120,7 @@ def convert_image(jpg):
             # dithering below speckles the card frame and makes the text unreadable.
             gray = gray.filter(ImageFilter.UnsharpMask(radius=1.2, percent=150, threshold=2))
             gray = gray.point(CONTRAST_LUT)
-            gray.convert("1").save(tmp, format="BMP")  # 1-bit conversion uses Floyd-Steinberg dithering
+            atkinson_dither(gray).save(tmp, format="BMP")
         os.replace(tmp, out)
         return None
     except Exception as e:

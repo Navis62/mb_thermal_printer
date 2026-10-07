@@ -228,7 +228,7 @@ If you previously used a `@reboot` crontab entry, remove it (`crontab -e`) so th
 | `scripts/update.sh` | All-in-one update script: list creatures, download images, convert to BMP |
 | `scripts/get_image_urls_from_scryfall.py` | Downloads the Scryfall bulk data and writes the creature list (`creatures_image_urls.json`) |
 | `scripts/download_images_from_scryfall.py` | Downloads card images in parallel; skips cards already converted |
-| `scripts/convert_images.py` | Converts downloaded JPGs to 384 px wide monochrome BMPs: sharpened, contrast-stretched, then dithered (Pillow, parallel; `--workers N` to limit the processes) |
+| `scripts/convert_images.py` | Converts downloaded JPGs to 384 px wide monochrome BMPs: sharpened, contrast-stretched, then Atkinson-dithered, which prints much better on thermal paper than Floyd-Steinberg (Pillow, parallel; `--workers N` to limit the processes) |
 | `scripts/progress.py` | Log-friendly progress lines used by the download and conversion scripts |
 | `deploy/momir.service` | systemd unit that starts `momir_basic.py` on boot |
 | `tests/test_scripts.py`, `tests/test_momir_basic.py` | Unit tests of the scripts and of the main program (`python -m unittest discover -s tests`) |

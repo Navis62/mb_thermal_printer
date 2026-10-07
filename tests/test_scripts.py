@@ -177,6 +177,29 @@ class ConvertImagesTest(unittest.TestCase):
             self.assertFalse(os.path.exists(convert_images.bmp_path(jpg) + convert_images.PARTIAL_SUFFIX))
 
 
+class AtkinsonDitherTest(unittest.TestCase):
+    def dither(self, level, size=(32, 32)):
+        return convert_images.atkinson_dither(Image.new("L", size, level))
+
+    def test_returns_a_one_bit_image_of_the_same_size(self):
+        out = self.dither(128, (40, 17))
+        self.assertEqual((out.mode, out.size), ("1", (40, 17)))
+
+    def test_pure_black_and_white_stay_pure(self):
+        self.assertEqual(self.dither(0).getextrema(), (0, 0))
+        self.assertEqual(self.dither(255).getextrema(), (255, 255))
+
+    def test_light_and_dark_areas_have_no_speckles(self):
+        # Atkinson drops part of the error: near-white / near-black become solid
+        self.assertEqual(self.dither(250).getextrema(), (255, 255))
+        self.assertEqual(self.dither(5).getextrema(), (0, 0))
+
+    def test_mid_grey_is_roughly_half_black(self):
+        pixels = list(self.dither(128, (64, 64)).getdata())
+        black = pixels.count(0) / len(pixels)
+        self.assertTrue(0.35 < black < 0.65, black)
+
+
 class ProgressTests(unittest.TestCase):
     def test_prints_one_line_per_step_and_at_the_end(self):
         import contextlib, io
