@@ -16,8 +16,9 @@
 
 set -e
 
-# Card names contain accents/symbols: never crash on a non-UTF-8 terminal locale
-export PYTHONIOENCODING=utf-8
+# Card names contain accents/symbols (e.g. "Ratonhnhaké:ton"): force UTF-8 for output and
+# file names so a non-UTF-8 terminal locale (latin-1, C) cannot make downloads fail
+export PYTHONUTF8=1
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
