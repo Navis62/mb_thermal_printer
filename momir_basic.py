@@ -55,7 +55,7 @@ OLED_TIMEOUT = _config.getint('DEFAULT', 'OLED_TIMEOUT', fallback=300)
 # Button wiring: false = pin pulled to 3.3 V when pressed (default), true = pin pulled to GND
 BUTTONS_ACTIVE_LOW = _config.getboolean('DEFAULT', 'BUTTONS_ACTIVE_LOW', fallback=False)
 # Blank lines fed after a card, so that its bottom clears the printer and can be torn off
-FEED_LINES = _config.getint('DEFAULT', 'FEED_LINES', fallback=6)
+FEED_LINES = _config.getint('DEFAULT', 'FEED_LINES', fallback=4)
 
 # ---------------------------------------------------------------------------
 # Hardware constants

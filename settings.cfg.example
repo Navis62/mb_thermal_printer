@@ -31,5 +31,5 @@ DATA_DIR=/home/pi/momir_data
 
 # Optional. Blank lines fed after each card so that its bottom comes out of the
 # printer and can be torn off. Increase it if the end of the card stays inside.
-# Default: 6.
-# FEED_LINES=6
+# Default: 4.
+# FEED_LINES=4
