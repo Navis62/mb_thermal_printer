@@ -121,6 +121,15 @@ This single script:
 
 Re-run `update.sh` whenever a new Magic set is released to fetch new cards only.
 
+Options (`./scripts/update.sh --help`):
+
+| Option | Effect |
+|--------|--------|
+| `--prune` | Also deletes the BMPs of cards that are no longer in the card list (for example a file renamed by a newer version of the scripts, which would otherwise be printed twice). A safety net refuses to delete more than half of the library at once. |
+| `--refresh` | Downloads and converts **every** card again, even those already converted. Use it after the image conversion settings changed, so the whole library gets the new rendering. Needs about 2 GB of free disk space while it runs. |
+
+Environment variables: `PYTHON=.venv/bin/python` to use a virtualenv's interpreter, and `CONVERT_WORKERS=2` to limit the conversion processes on low-memory boards.
+
 ### 4. Run on startup
 
 Install the systemd service so `momir_basic.py` starts when the Pi boots, is restarted if it crashes, and logs to the journal:
@@ -156,11 +165,12 @@ If you previously used a `@reboot` crontab entry, remove it (`crontab -e`) so th
 │   ├── update.sh
 │   ├── get_image_urls_from_scryfall.py
 │   ├── download_images_from_scryfall.py
-│   └── convert_images.py
+│   ├── convert_images.py
+│   └── progress.py
 ├── deploy/
 │   └── momir.service                   systemd unit (start on boot)
-├── tests/
-│   └── test_scripts.py
+├── tests/                              Unit tests (hardware mocked)
+├── .github/workflows/tests.yml         Continuous integration
 └── assets/
     ├── FredokaOne-Regular.ttf
     └── wiring.jpg
@@ -176,6 +186,7 @@ If you previously used a `@reboot` crontab entry, remove it (`crontab -e`) so th
 | `scripts/download_images_from_scryfall.py` | Downloads card images in parallel; skips cards already converted |
 | `scripts/convert_images.py` | Converts downloaded JPGs to 384 px wide monochrome BMPs (Pillow, parallel) |
 | `deploy/momir.service` | systemd unit that starts `momir_basic.py` on boot |
-| `tests/test_scripts.py` | Unit tests of the scripts (`python -m unittest discover -s tests`) |
+| `tests/` | Unit tests of the scripts and of `momir_basic.py` with the hardware mocked (`python -m unittest discover -s tests`) |
+| `.github/workflows/tests.yml` | GitHub Actions: runs the tests and ShellCheck on every push and pull request |
 | `assets/FredokaOne-Regular.ttf` | Font used by the OLED display |
 | `assets/wiring.jpg` | Wiring reference diagram |

@@ -20,6 +20,9 @@ DOWNLOAD_WORKERS = 12
 # Suffix of files being downloaded; renamed to .jpg once complete
 PARTIAL_SUFFIX = ".part"
 
+# --prune never deletes more than this fraction of the existing BMPs
+PRUNE_MAX_FRACTION = 0.5
+
 # Scryfall asks API clients to identify themselves
 HEADERS = {
     'User-Agent': 'MomirThermalPrinter/1.0',
@@ -57,6 +60,17 @@ def parse_args():
         default=".",
         help="Root directory where CMC sub-folders are created (default: current directory). "
              "Cards whose BMP already exists in <images-dir>/<cmc>/converted_files/ are skipped."
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Download every image again, even for cards that are already converted "
+             "(to regenerate the BMPs, e.g. after the conversion settings changed)."
+    )
+    parser.add_argument(
+        "--prune",
+        action="store_true",
+        help="Delete the converted BMPs of cards that are no longer in the card list."
     )
     return parser.parse_args()
 
@@ -121,22 +135,70 @@ def download_image(item, images_dir):
         return None
 
 
-def download_images_from_json(json_file, images_dir):
+def find_obsolete_bmps(data, images_dir):
+    """Return (obsolete BMP paths, number of BMPs found).
+
+    A BMP is obsolete when no card of the list maps to its <cmc>/<file name>, for
+    example a card that left the list, or one whose file name changed.
+    """
+    expected = {(str(int(item["cmc"])), sanitise_name(item["name"])) for item in data}
+    existing = glob.glob(os.path.join(glob.escape(images_dir), "*", "converted_files", "*.bmp"))
+    obsolete = []
+    for path in existing:
+        cmc_dir = os.path.basename(os.path.dirname(os.path.dirname(path)))
+        stem = os.path.splitext(os.path.basename(path))[0]
+        if (cmc_dir, stem) not in expected:
+            obsolete.append(path)
+    return obsolete, len(existing)
+
+
+def prune_obsolete_bmps(data, images_dir):
+    """Delete the BMPs of cards that are no longer in the list; return how many were removed.
+
+    Safety net: if more than PRUNE_MAX_FRACTION of the BMPs look obsolete, the card
+    list is probably wrong or incomplete, so nothing is deleted.
+    """
+    obsolete, total = find_obsolete_bmps(data, images_dir)
+    if not obsolete:
+        print("No obsolete BMP to remove.")
+        return 0
+    if len(obsolete) > total * PRUNE_MAX_FRACTION:
+        print(f"WARNING: {len(obsolete)} of {total} BMPs look obsolete, which is too many: "
+              "the card list is probably incomplete. Nothing was deleted.")
+        return 0
+    removed = 0
+    for path in obsolete:
+        try:
+            os.unlink(path)
+            removed += 1
+        except OSError as e:
+            print(f"Could not remove {path}: {e}")
+    print(f"Removed {removed} obsolete BMP(s).")
+    return removed
+
+
+def download_images_from_json(json_file, images_dir, force=False, prune=False):
     """Download all new card images and return the number of failed downloads.
 
     Cards whose BMP already exists, or whose JPG was downloaded by a previous
-    run but not converted yet, are skipped.
+    run but not converted yet, are skipped, unless force is set (every image is
+    then downloaded again). With prune, BMPs of cards no longer in the list are deleted.
     """
     with open(json_file, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
     cleanup_partial_files(images_dir)
 
+    if prune:
+        prune_obsolete_bmps(data, images_dir)
+
     to_download = []
     converted = pending_conversion = 0
     for item in data:
         cmc, name = int(item["cmc"]), item["name"]
-        if bmp_exists(images_dir, cmc, name):
+        if force:
+            to_download.append(item)
+        elif bmp_exists(images_dir, cmc, name):
             converted += 1
         elif os.path.isfile(jpg_path(images_dir, cmc, name)):
             pending_conversion += 1
@@ -163,7 +225,8 @@ def download_images_from_json(json_file, images_dir):
 if __name__ == "__main__":
     args = parse_args()
     json_file = os.path.join(args.data_dir, 'creatures_image_urls.json')
-    failed = download_images_from_json(json_file, images_dir=args.images_dir)
+    failed = download_images_from_json(json_file, images_dir=args.images_dir,
+                                       force=args.force, prune=args.prune)
     if failed:
         print(f"WARNING: {failed} image(s) could not be downloaded. Re-run to retry.")
         sys.exit(1)

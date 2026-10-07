@@ -38,6 +38,11 @@ def parse_args():
         help="Number of parallel conversion processes (default: number of CPUs). "
              "Lower it on low-memory boards such as the Pi Zero 2."
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Convert every JPG again, even when its BMP already exists."
+    )
     return parser.parse_args()
 
 
@@ -47,10 +52,10 @@ def bmp_path(jpg):
     return os.path.join(directory, "converted_files", os.path.splitext(filename)[0] + ".bmp")
 
 
-def find_pending(images_dir):
-    """Return the JPGs (<images-dir>/<cmc>/*.jpg) that have no BMP yet."""
+def find_pending(images_dir, force=False):
+    """Return the JPGs (<images-dir>/<cmc>/*.jpg) that have no BMP yet (all of them if force)."""
     pattern = os.path.join(glob.escape(images_dir), "*", "*.jpg")
-    return [jpg for jpg in sorted(glob.glob(pattern)) if not os.path.isfile(bmp_path(jpg))]
+    return [jpg for jpg in sorted(glob.glob(pattern)) if force or not os.path.isfile(bmp_path(jpg))]
 
 
 def cleanup_partial_files(images_dir):
@@ -91,10 +96,10 @@ def convert_image(jpg):
         return f"{jpg}: {e}"
 
 
-def convert_all(images_dir, workers=None):
+def convert_all(images_dir, workers=None, force=False):
     """Convert every pending JPG in parallel and return the number of failures."""
     cleanup_partial_files(images_dir)
-    pending = find_pending(images_dir)
+    pending = find_pending(images_dir, force)
     if not pending:
         print("No new images to convert.")
         return 0
@@ -116,6 +121,6 @@ def convert_all(images_dir, workers=None):
 
 if __name__ == "__main__":
     args = parse_args()
-    failed = convert_all(args.images_dir, args.workers)
+    failed = convert_all(args.images_dir, args.workers, args.force)
     if failed:
         sys.exit(1)
