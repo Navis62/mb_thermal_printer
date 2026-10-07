@@ -1,0 +1,28 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Python 3.11 is what Raspberry Pi OS Bookworm ships
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Only what the tests need: RPi.GPIO and the other hardware libraries
+      # cannot be installed outside a Raspberry Pi, and the tests mock them.
+      - run: pip install requests Pillow
+
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Shell scripts
+        run: |
+          bash -n scripts/update.sh
+          shellcheck scripts/update.sh
