@@ -2,9 +2,11 @@
 
 A Raspberry Pi-powered thermal printer that plays [Momir Basic](https://mtg.fandom.com/wiki/Momir_Basic): press a button to set your mana value, then print a random creature card at that cost.
 
-![Wiring diagram](assets/wiring.jpg)
+<p align="center">
+  <img src="assets/photo-finished.jpg" alt="The finished Momir Basic printer printing a creature card" width="420">
+</p>
 
-> **Note:** The wiring diagram above was made with a Raspberry Pi 4. The GPIO pinout is identical on the Raspberry Pi Zero 2 W — the same connections apply.
+> This is a fork of [oboyone/mb_thermal_printer](https://github.com/oboyone/mb_thermal_printer), the original project and wiring design. Unofficial fan project: not affiliated with or endorsed by Wizards of the Coast or Scryfall. Card images belong to their owners; this repository does not contain any, you download them yourself from [Scryfall](https://scryfall.com/).
 
 ---
 
@@ -36,23 +38,35 @@ A Raspberry Pi-powered thermal printer that plays [Momir Basic](https://mtg.fand
 
 ## Wiring
 
+![Wiring diagram](assets/wiring.jpg)
+
+> The diagram was made with a Raspberry Pi 4. The GPIO pinout is identical on the Raspberry Pi Zero 2 W — the same connections apply. In the diagram, "Tx to pin 8" / "Rx to pin 10" name the **Pi** pins: see the UART note below.
+
 All pins use BOARD numbering (physical pin numbers, not BCM GPIO numbers).
 
 | Component | Pi physical pin | Notes |
 |-----------|----------------|-------|
-| Button UP (increase CMC) | Pin 11 | Pull-down via PUD_DOWN; button connects pin to 3.3 V |
+| Button UP (increase CMC) | Pin 11 | Default: pull-down (PUD_DOWN), the button connects the pin to 3.3 V. See *Buttons* below if yours behave the other way round |
 | Button DOWN (decrease CMC) | Pin 13 | Same wiring |
 | Button PRINT | Pin 15 | Same wiring |
 | OLED SDA | Pin 3 (SDA1) | I²C address 0x3C |
 | OLED SCL | Pin 5 (SCL1) | |
 | OLED VCC | Pin 1 (3.3 V) | |
 | OLED GND | Pin 6 (GND) | |
-| Thermal printer TX | Pin 8 (UART TX) | `/dev/serial0`, 9600 baud |
-| Thermal printer RX | Pin 10 (UART RX) | |
+| Pi TX (GPIO14) → printer **RX** | Pin 8 | `/dev/serial0`, 9600 baud. This is the only data line the program needs |
+| Pi RX (GPIO15) ← printer **TX** | Pin 10 | Not used by the program (it never reads from the printer); wire it anyway if you like |
 | Thermal printer GND | GND | Shared ground with Pi |
 | Thermal printer VH | 9 V supply | Separate from Pi power |
 
 > The GPIO pinout is the same on all 40-pin Raspberry Pi models (Pi 3, Pi 4, Pi Zero 2 W, etc.).
+
+**UART:** serial lines cross over. The Pi's TX pin (8) goes to the printer's RX input, and (optionally) the Pi's RX pin (10) to the printer's TX output.
+
+**Buttons:** the program expects each button to connect its pin to 3.3 V when pressed. If the mana counter climbs by itself right after start-up (or presses do nothing), your buttons are wired the other way round — for example a KY-004 module with its `+` and `-` pins swapped, or a plain push button to GND. Either fix the wiring, or add `BUTTONS_ACTIVE_LOW=true` to `settings.cfg` (see below) — both work.
+
+<p align="center">
+  <img src="assets/photo-inside.jpg" alt="Inside of the box: Raspberry Pi, breadboard, printer and wiring" width="560">
+</p>
 
 ---
 
@@ -105,6 +119,10 @@ DATA_DIR=/home/pi/momir_data
 
 # Optional: seconds before the OLED switches off to avoid burn-in; any button wakes it (default: 300, 0 = never)
 # OLED_TIMEOUT=300
+
+# Optional: set to true if your buttons connect the pin to GND when pressed, e.g.
+# the counter climbs by itself with the default wiring (default: false)
+# BUTTONS_ACTIVE_LOW=true
 ```
 
 ### 3. Download and convert card images
@@ -119,7 +137,19 @@ This single script:
 3. Converts new JPGs to monochrome BMP in parallel using all CPU cores
 4. Cleans up temporary files: the downloaded JPGs, the Scryfall bulk file and `creatures_image_urls.json` are deleted once converted
 
-Re-run `update.sh` whenever a new Magic set is released to fetch new cards only.
+Progress is logged as one line per 5 %, with speed and remaining time, so it stays readable in a log file or over SSH.
+
+Re-run `update.sh` whenever a new Magic set is released to fetch new cards only. If it is interrupted, just run it again: it resumes where it stopped.
+
+**Low-memory boards (Pi Zero 2):** the conversion uses one process per CPU core, which can exhaust 512 MB of RAM. Limit it with `CONVERT_WORKERS=2 ./scripts/update.sh` and consider a larger swap.
+
+**Faster: prepare the images on a PC.** The conversion is much quicker on a computer (Linux, macOS, WSL, or Git Bash on Windows; only `requests` and `Pillow` are needed: `python -m pip install requests Pillow`). Point `IMAGES_DIR` in the PC's `settings.cfg` to a local folder, run `./scripts/update.sh`, then copy the whole folder to the Pi:
+
+```bash
+rsync -av --progress /path/to/images/ pi@<pi-address>:/path/to/IMAGES_DIR/
+```
+
+`momir_basic.py` re-reads a folder when its content changes, so new cards are used without restarting it.
 
 ### 4. Run on startup
 
@@ -156,14 +186,18 @@ If you previously used a `@reboot` crontab entry, remove it (`crontab -e`) so th
 │   ├── update.sh
 │   ├── get_image_urls_from_scryfall.py
 │   ├── download_images_from_scryfall.py
-│   └── convert_images.py
+│   ├── convert_images.py
+│   └── progress.py
 ├── deploy/
 │   └── momir.service                   systemd unit (start on boot)
 ├── tests/
-│   └── test_scripts.py
+│   ├── test_scripts.py
+│   └── test_momir_basic.py
 └── assets/
     ├── FredokaOne-Regular.ttf
-    └── wiring.jpg
+    ├── wiring.jpg
+    ├── photo-finished.jpg
+    └── photo-inside.jpg
 ```
 
 | File | Description |
@@ -174,8 +208,10 @@ If you previously used a `@reboot` crontab entry, remove it (`crontab -e`) so th
 | `scripts/update.sh` | All-in-one update script: list creatures, download images, convert to BMP |
 | `scripts/get_image_urls_from_scryfall.py` | Downloads the Scryfall bulk data and writes the creature list (`creatures_image_urls.json`) |
 | `scripts/download_images_from_scryfall.py` | Downloads card images in parallel; skips cards already converted |
-| `scripts/convert_images.py` | Converts downloaded JPGs to 384 px wide monochrome BMPs (Pillow, parallel) |
+| `scripts/convert_images.py` | Converts downloaded JPGs to 384 px wide monochrome BMPs: sharpened, contrast-stretched, then dithered (Pillow, parallel; `--workers N` to limit the processes) |
+| `scripts/progress.py` | Log-friendly progress lines used by the download and conversion scripts |
 | `deploy/momir.service` | systemd unit that starts `momir_basic.py` on boot |
-| `tests/test_scripts.py` | Unit tests of the scripts (`python -m unittest discover -s tests`) |
+| `tests/test_scripts.py`, `tests/test_momir_basic.py` | Unit tests of the scripts and of the main program (`python -m unittest discover -s tests`) |
 | `assets/FredokaOne-Regular.ttf` | Font used by the OLED display |
 | `assets/wiring.jpg` | Wiring reference diagram |
+| `assets/photo-*.jpg` | Photos of the finished build |
