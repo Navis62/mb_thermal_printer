@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 import convert_images
 import download_images_from_scryfall as download
 import get_image_urls_from_scryfall as urls
+import progress
 from PIL import Image
 
 
@@ -174,6 +175,34 @@ class ConvertImagesTest(unittest.TestCase):
             self.assertIn("Broken.jpg", convert_images.convert_image(jpg))
             self.assertFalse(os.path.exists(convert_images.bmp_path(jpg)))
             self.assertFalse(os.path.exists(convert_images.bmp_path(jpg) + convert_images.PARTIAL_SUFFIX))
+
+
+class ProgressTests(unittest.TestCase):
+    def test_prints_one_line_per_step_and_at_the_end(self):
+        import contextlib, io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            p = progress.Progress(40, "x")  # step = 2 items (5%)
+            for _ in range(40):
+                p.tick()
+        lines = out.getvalue().splitlines()
+        self.assertEqual(len(lines), 20)
+        self.assertIn("40/40 (100%)", lines[-1])
+        self.assertIn("[" + "#" * progress.BAR_WIDTH + "]", lines[-1])
+
+    def test_small_totals_print_every_item(self):
+        import contextlib, io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            p = progress.Progress(3, "x")
+            for _ in range(3):
+                p.tick()
+        self.assertEqual(len(out.getvalue().splitlines()), 3)
+
+    def test_format_duration(self):
+        self.assertEqual(progress.format_duration(42), "42s")
+        self.assertEqual(progress.format_duration(425), "7m05s")
+        self.assertEqual(progress.format_duration(7380), "2h03m")
 
 
 if __name__ == "__main__":

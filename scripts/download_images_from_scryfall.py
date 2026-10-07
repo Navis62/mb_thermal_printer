@@ -12,6 +12,8 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from progress import Progress
+
 # Number of parallel download workers
 DOWNLOAD_WORKERS = 12
 
@@ -145,11 +147,13 @@ def download_images_from_json(json_file, images_dir):
           f"{pending_conversion} downloaded and waiting for conversion (skipped).")
 
     downloaded = 0
+    progress = Progress(len(to_download), "download") if to_download else None
     with ThreadPoolExecutor(max_workers=DOWNLOAD_WORKERS) as executor:
         futures = {executor.submit(download_image, item, images_dir): item for item in to_download}
         for future in as_completed(futures):
             if future.result() is not None:
                 downloaded += 1
+            progress.tick()
 
     failed = len(to_download) - downloaded
     print(f"Done: {downloaded}/{len(to_download)} image(s) downloaded successfully.")

@@ -6,6 +6,8 @@ from concurrent.futures import ProcessPoolExecutor
 
 from PIL import Image, ImageFilter
 
+from progress import Progress
+
 # Print width of the thermal printer, in dots
 PRINTER_WIDTH = 384
 
@@ -99,7 +101,12 @@ def convert_all(images_dir, workers=None):
 
     print(f"Converting {len(pending)} image(s) in parallel...")
     with ProcessPoolExecutor(max_workers=max(1, workers or os.cpu_count() or 1)) as executor:
-        errors = [e for e in executor.map(convert_image, pending, chunksize=8) if e]
+        progress = Progress(len(pending), "convert")
+        errors = []
+        for error in executor.map(convert_image, pending, chunksize=8):
+            if error:
+                errors.append(error)
+            progress.tick()
 
     for error in errors:
         print(f"Failed to convert {error}")
