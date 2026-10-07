@@ -9,13 +9,18 @@
 # Example: /home/pi/Desktop/momir
 IMAGES_DIR=/home/pi/Desktop/momir
 
-# Directory where intermediate data files are stored (AtomicCards.json,
+# Directory where intermediate data files are stored (Scryfall bulk file,
 # creatures_image_urls.json). Keeping this outside the repository avoids
 # committing large data files.
 # Example: /home/pi/momir_data
 DATA_DIR=/home/pi/momir_data
 
-# Path to the TrueType font used by the OLED display.
-# The bundled font can be referenced relative to the project directory.
-# Example: /home/pi/mb_thermal_printer/FredokaOne-Regular.ttf
-FONT_PATH=/home/pi/mb_thermal_printer/FredokaOne-Regular.ttf
+# Optional. Path to the TrueType font used by the OLED display.
+# By default the bundled font (assets/FredokaOne-Regular.ttf) is used. A relative
+# path is relative to the project directory; if the file does not exist, the
+# bundled font is used too.
+# FONT_PATH=assets/FredokaOne-Regular.ttf
+
+# Optional. Seconds of inactivity before the OLED is switched off to avoid
+# burn-in (any button wakes it up; that press does nothing else). 0 = never.
+# OLED_TIMEOUT=300
