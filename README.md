@@ -235,3 +235,11 @@ If you previously used a `@reboot` crontab entry, remove it (`crontab -e`) so th
 | `assets/FredokaOne-Regular.ttf` | Font used by the OLED display |
 | `assets/wiring.jpg` | Wiring reference diagram |
 | `assets/photo-*.jpg` | Photos of the finished build |
+
+---
+
+## License
+
+Released under the [MIT License](LICENSE). Copyright (c) 2026 Alexander Johansson (original project) and Pierrick Visentin (fork modifications).
+
+The bundled font (`assets/FredokaOne-Regular.ttf`) is distributed under its own license (SIL Open Font License), not the MIT license above.
