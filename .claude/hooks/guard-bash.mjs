@@ -19,7 +19,7 @@ export const RULES = [
   [[git('push'), String.raw`(--force\b|--force-with-lease\b|\s-\w*f\b|\s\+\S)`], 'force push is forbidden: it rewrites remote history'],
   [[git(String.raw`[\w-]+`), String.raw`\s--no-verify\b`],'--no-verify is forbidden: fix the cause instead of skipping the checks'],
   [[git('reset'), String.raw`\s--(hard|merge)\b`], 'git reset --hard is forbidden: uncommitted work would be lost'],
-  [[git('clean'), String.raw`(\s-\w*f|\s--force\b)`], 'git clean -f is forbidden: it would delete untracked files (.claude/, CLAUDE.md, settings.cfg are untracked)'],
+  [[git('clean'), String.raw`(\s-\w*f|\s--force\b)`], 'git clean -f is forbidden: it would delete untracked files (settings.cfg and local work in progress are untracked)'],
   [[git('checkout'), String.raw`\s--(\s|$)`], 'git checkout -- <path> is forbidden: it would discard uncommitted changes'],
   [[git('checkout'), String.raw`\s(\.|:/)(\s|$)`], 'git checkout . is forbidden: it would discard all uncommitted changes'],
   [[git('checkout|switch'), String.raw`\s(-\w*f\b|--force\b|--discard-changes\b)`], 'git checkout/switch -f is forbidden: it would discard uncommitted changes'],

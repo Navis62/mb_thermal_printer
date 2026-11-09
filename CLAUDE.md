@@ -49,7 +49,7 @@ s'exécute ici, mais il est long et appelle Scryfall : seulement sur demande.
   hors du dépôt, jamais commitées, jamais supprimées sans demande (les régénérer prend des heures).
 - `assets/` (police sous licence OFL, `wiring.jpg`, `photo-*.jpg`) et `LICENSE` sont des originaux : on ne les
   supprime ni ne les remplace.
-- `.claude/` et `CLAUDE.md` ne sont pas suivis par git : un `git clean` les effacerait.
+- `settings.cfg` n'est pas suivi par git : un `git clean` l'effacerait.
 - Pas de `pip install` hors `.venv`, de `ssh` / `rsync` vers le Pi ni de push sans demande : `/deploy-pi`, `/ship`.
 
 ## Où regarder

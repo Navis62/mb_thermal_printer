@@ -19,8 +19,7 @@ Branche : !`git branch --show-current`
 2. **Relire** `git status` : ne commite jamais `.venv/`, `__pycache__/`, `settings.cfg`, `oracle-cards.jsonl.gz`,
    `creatures_image_urls.json`, des dossiers de coût (`0/` à `16/`, `converted_files/`), des `*.jpg` / `*.bmp` de
    cartes, un `.env`, une clé (`*.pem`, `*.key`), ni un réglage personnel (`.claude/settings.local.json`,
-   `CLAUDE.local.md`). `.claude/` et `CLAUDE.md` ne sont pas suivis : ne les ajoute que si l'utilisateur le demande.
-   Ajoute les fichiers un par un, pas `git add -A`.
+   `CLAUDE.local.md`). Ajoute les fichiers un par un, pas `git add -A`.
 3. **Commits** petits, un sujet chacun. Message **en anglais**, titre court à l'impératif qui dit ce qui change
    (« Wait for PRINT release before the next card »), puis, si le commit n'est pas trivial, un corps : pourquoi (le
    défaut ou le besoin), quoi, et la preuve (vérification faite, ce qui reste à essayer sur le Pi). Termine par la
