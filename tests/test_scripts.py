@@ -147,6 +147,14 @@ class DownloadHelpersTest(unittest.TestCase):
             self.assertFalse(os.path.exists(part))
             self.assertTrue(os.path.exists(jpg))
 
+    def test_cleanup_ignores_folders_that_are_not_cmc(self):
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, "assets"))
+            part = os.path.join(root, "assets", "x.part")
+            open(part, "w").close()
+            download.cleanup_partial_files(root)
+            self.assertTrue(os.path.exists(part))
+
 
 class ConvertImagesTest(unittest.TestCase):
     def make_jpg(self, root, cmc, name, size=(488, 680)):
@@ -172,6 +180,25 @@ class ConvertImagesTest(unittest.TestCase):
             todo = self.make_jpg(root, 3, "Todo")
             convert_images.convert_image(done)
             self.assertEqual(convert_images.find_pending(root), [todo])
+
+    def test_find_pending_ignores_folders_that_are_not_cmc(self):
+        # IMAGES_DIR pointing at the repository must not pick up assets/wiring.jpg
+        with tempfile.TemporaryDirectory() as root:
+            card = self.make_jpg(root, 12, "Card")
+            os.makedirs(os.path.join(root, "assets"))
+            Image.new("RGB", (10, 10)).save(os.path.join(root, "assets", "wiring.jpg"))
+            self.assertEqual(convert_images.find_pending(root), [card])
+
+    def test_cleanup_ignores_folders_that_are_not_cmc(self):
+        with tempfile.TemporaryDirectory() as root:
+            parts = {}
+            for folder in ("7", "assets"):
+                os.makedirs(os.path.join(root, folder, "converted_files"))
+                parts[folder] = os.path.join(root, folder, "converted_files", "x.bmp.part")
+                open(parts[folder], "w").close()
+            convert_images.cleanup_partial_files(root)
+            self.assertFalse(os.path.exists(parts["7"]))
+            self.assertTrue(os.path.exists(parts["assets"]))
 
     def test_corrupt_image_reports_error_and_leaves_no_file(self):
         with tempfile.TemporaryDirectory() as root:

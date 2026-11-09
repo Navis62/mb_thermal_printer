@@ -1,11 +1,11 @@
 import argparse
-import glob
 import os
 import sys
 from concurrent.futures import ProcessPoolExecutor
 
 from PIL import Image, ImageFilter
 
+from cmc_dirs import glob_in_cmc_dirs
 from progress import Progress
 
 # Print width of the thermal printer, in dots
@@ -49,14 +49,12 @@ def bmp_path(jpg):
 
 def find_pending(images_dir):
     """Return the JPGs (<images-dir>/<cmc>/*.jpg) that have no BMP yet."""
-    pattern = os.path.join(glob.escape(images_dir), "*", "*.jpg")
-    return [jpg for jpg in sorted(glob.glob(pattern)) if not os.path.isfile(bmp_path(jpg))]
+    return [jpg for jpg in glob_in_cmc_dirs(images_dir, "*.jpg") if not os.path.isfile(bmp_path(jpg))]
 
 
 def cleanup_partial_files(images_dir):
     """Remove leftovers of interrupted conversions (<cmc>/converted_files/*.part)."""
-    for path in glob.glob(os.path.join(glob.escape(images_dir), "*", "converted_files",
-                                       "*" + PARTIAL_SUFFIX)):
+    for path in glob_in_cmc_dirs(images_dir, "converted_files", "*" + PARTIAL_SUFFIX):
         try:
             os.unlink(path)
         except OSError:

@@ -98,8 +98,14 @@ echo ""
 # ---------------------------------------------------------------------------
 echo "[4/4] Cleaning up temporary files..."
 
-# Remove downloaded JPGs now that they have been converted to BMP
-find "${IMAGES_DIR}" -mindepth 2 -maxdepth 2 -name "*.jpg" -delete
+# Remove downloaded JPGs now that they have been converted to BMP: only in the CMC folders
+# (all-digit names), never in other folders of IMAGES_DIR such as the repository's assets/
+for CMC_DIR in "${IMAGES_DIR}"/*/; do
+    case "$(basename "${CMC_DIR}")" in
+        ""|*[!0-9]*) continue ;;
+    esac
+    find "${CMC_DIR}" -mindepth 1 -maxdepth 1 -name "*.jpg" -delete
+done
 echo "JPG files removed."
 
 # Remove the Scryfall bulk file (only needed during this run)

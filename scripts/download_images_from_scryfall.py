@@ -1,4 +1,3 @@
-import glob
 import os
 import re
 import argparse
@@ -12,6 +11,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from cmc_dirs import glob_in_cmc_dirs
 from progress import Progress
 
 # Number of parallel download workers
@@ -80,7 +80,7 @@ def jpg_path(images_dir, cmc, card_name):
 
 def cleanup_partial_files(images_dir):
     """Remove leftovers of interrupted downloads (<images-dir>/<cmc>/*.part)."""
-    for path in glob.glob(os.path.join(glob.escape(images_dir), "*", "*" + PARTIAL_SUFFIX)):
+    for path in glob_in_cmc_dirs(images_dir, "*" + PARTIAL_SUFFIX):
         try:
             os.unlink(path)
         except OSError:
