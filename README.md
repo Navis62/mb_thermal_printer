@@ -150,7 +150,7 @@ DATA_DIR=/home/pi/momir_data
 ```
 
 This single script:
-1. Downloads the latest Scryfall bulk data (~25 MB) and extracts the list of creature cards (tokens, Un-cards and Arena-only Alchemy cards are left out; double-faced cards use their front face)
+1. Downloads the latest Scryfall bulk data (~25 MB) and extracts the list of creature cards (tokens, Un-cards and Arena-only Alchemy cards are left out; double-faced cards use their front face, and are kept only if that face is a creature)
 2. Downloads only **new** images (cards already converted to BMP are skipped; failed downloads are retried, and reported at the end)
 3. Converts new JPGs to monochrome BMP in parallel using all CPU cores
 4. Cleans up temporary files: the downloaded JPGs, the Scryfall bulk file and `creatures_image_urls.json` are deleted once converted

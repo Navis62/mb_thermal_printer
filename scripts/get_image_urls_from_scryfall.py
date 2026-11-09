@@ -95,10 +95,19 @@ def is_arena_only(card):
     return bool(games) and games <= {'arena'}
 
 
+def is_creature_front(card):
+    """Return True if the front face is a creature: that is the face that gets printed.
+
+    A double-faced card's type line covers both faces ("Battle — Siege // Creature — Dragon"):
+    only the part before " // " counts.
+    """
+    return 'Creature' in card.get('type_line', '').split(' // ')[0]
+
+
 def is_valid_creature(card):
     """Return True if the card is a real, printable creature card."""
     return (
-        'Creature' in card.get('type_line', '')
+        is_creature_front(card)
         and card.get('layout') not in EXCLUDED_LAYOUTS
         and is_legal_somewhere(card)
         and not is_arena_only(card)

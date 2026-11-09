@@ -57,6 +57,13 @@ class IsValidCreatureTest(unittest.TestCase):
         self.assertTrue(urls.is_valid_creature(make_card(games=["arena", "paper"])))
         self.assertTrue(urls.is_valid_creature(make_card(games=["mtgo"])))
 
+    def test_double_faced_card_needs_a_creature_front_face(self):
+        # Battles and sagas that transform into a creature: the printed front face is not a creature
+        self.assertFalse(urls.is_valid_creature(make_card(type_line="Battle — Siege // Creature — Dragon")))
+        self.assertFalse(urls.is_valid_creature(make_card(type_line="Enchantment — Saga // Enchantment Creature — Kami")))
+        self.assertTrue(urls.is_valid_creature(make_card(type_line="Creature — Human Wizard // Creature — Human Insect")))
+        self.assertTrue(urls.is_valid_creature(make_card(type_line="Creature — Human Peasant // Sorcery — Adventure")))
+
     def test_arena_rebalanced_name(self):
         self.assertFalse(urls.is_valid_creature(make_card(name="A-Grizzly Bears")))
 
