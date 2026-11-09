@@ -9,3 +9,15 @@ creatures_image_urls.json
 __pycache__/
 *.pyc
 .venv/
+
+# Personal secrets
+.env
+.env.*
+
+# Legacy generated card data (old layout: CMC folders at the repository root)
+AtomicCards.json
+[0-9]/
+1[0-6]/
+*.bmp
+*.pbm
+binary_files/
