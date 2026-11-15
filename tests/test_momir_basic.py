@@ -127,6 +127,98 @@ class ActiveLowTest(unittest.TestCase):
         GPIO.input.side_effect = None
 
 
+class ActiveLowWiringTest(MainLoopCase):
+    """BUTTONS_ACTIVE_LOW=true: the pin idles HIGH (pull-up) and a press pulls it LOW."""
+
+    def run_active_low(self, pressed, **kw):
+        # Raw pin levels: HIGH unless the button is pressed
+        def level(pin, n):
+            return not pressed(pin, n)
+        with mock.patch.object(mb, "BUTTONS_ACTIVE_LOW", True):
+            self.run_main(level, **kw)
+
+    def test_idle_buttons_do_nothing(self):
+        self.run_active_low(lambda pin, n: False, max_sleeps=10)
+        shown = [c.args[2] for c in self.display_cmc.call_args_list]
+        self.assertEqual(set(shown), {0})
+        self.display_message.assert_not_called()
+        self.print_image.assert_not_called()
+
+    def test_up_press_increases_cmc(self):
+        self.run_active_low(lambda pin, n: pin == mb.BUTTON_UP_PIN and n == 1, max_sleeps=5)
+        shown = [c.args[2] for c in self.display_cmc.call_args_list]
+        self.assertEqual(shown[-1], 1)
+
+    def test_down_press_at_zero_shows_message(self):
+        self.run_active_low(lambda pin, n: pin == mb.BUTTON_DOWN_PIN and n == 1, max_sleeps=4)
+        self.assertEqual(self.display_message.call_args.args[2], mb.MSG_AT_MIN)
+
+    def test_long_press_on_print_prints_a_single_card(self):
+        os.makedirs(os.path.join(_IMAGES_DIR, "0", "converted_files"), exist_ok=True)
+        open(os.path.join(_IMAGES_DIR, "0", "converted_files", "a.bmp"), "w").close()
+        mb._card_cache.clear()
+        self.run_active_low(lambda pin, n: pin == mb.BUTTON_PRINT_PIN and n < 10)
+        self.assertEqual(self.print_image.call_count, 1)
+
+    def test_default_wiring_ignores_low_levels(self):
+        # Active-high wiring: all pins reading LOW means nothing is pressed
+        self.run_main(lambda pin, n: False, max_sleeps=10)
+        shown = [c.args[2] for c in self.display_cmc.call_args_list]
+        self.assertEqual(set(shown), {0})
+
+
+class InitHardwareTest(unittest.TestCase):
+    def setUp(self):
+        GPIO.reset_mock()
+
+    def pulls(self):
+        return {c.args[0]: c.kwargs["pull_up_down"] for c in GPIO.setup.call_args_list}
+
+    def test_default_wiring_uses_pull_down_on_the_three_buttons(self):
+        with mock.patch.object(mb, "BUTTONS_ACTIVE_LOW", False):
+            mb.init_hardware()
+        self.assertEqual(self.pulls(), {11: GPIO.PUD_DOWN, 13: GPIO.PUD_DOWN, 15: GPIO.PUD_DOWN})
+        GPIO.setmode.assert_called_with(GPIO.BOARD)
+
+    def test_active_low_wiring_uses_pull_up_on_the_three_buttons(self):
+        with mock.patch.object(mb, "BUTTONS_ACTIVE_LOW", True):
+            mb.init_hardware()
+        self.assertEqual(self.pulls(), {11: GPIO.PUD_UP, 13: GPIO.PUD_UP, 15: GPIO.PUD_UP})
+
+
+class SettingsOptionsTest(unittest.TestCase):
+    def load(self, extra):
+        """Import a fresh copy of momir_basic.py with extra lines in the fake settings.cfg."""
+        import importlib.util
+
+        def fake_read(self, filenames, encoding=None):
+            self.read_string(f"[DEFAULT]\nIMAGES_DIR={_IMAGES_DIR}\n{extra}\n")
+            return [filenames]
+
+        spec = importlib.util.spec_from_file_location("momir_basic_copy", os.path.join(ROOT, "momir_basic.py"))
+        module = importlib.util.module_from_spec(spec)
+        with mock.patch.object(configparser.RawConfigParser, "read", fake_read):
+            spec.loader.exec_module(module)
+        return module
+
+    def test_options_are_read_from_settings(self):
+        module = self.load("BUTTONS_ACTIVE_LOW=true\nFEED_LINES=0\nOLED_TIMEOUT=12")
+        self.assertTrue(module.BUTTONS_ACTIVE_LOW)
+        self.assertEqual(module.FEED_LINES, 0)
+        self.assertEqual(module.OLED_TIMEOUT, 12)
+
+    def test_options_have_defaults(self):
+        module = self.load("")
+        self.assertFalse(module.BUTTONS_ACTIVE_LOW)
+        self.assertEqual(module.FEED_LINES, 4)
+        self.assertEqual(module.OLED_TIMEOUT, 300)
+
+    def test_missing_settings_file_raises_a_clear_error(self):
+        with mock.patch.object(configparser.RawConfigParser, "read", return_value=[]):
+            with self.assertRaises(FileNotFoundError):
+                mb.load_settings()
+
+
 class OledSleepTest(MainLoopCase):
     def run_with_clock(self, pressed, clock, **kw):
         """main() with a controllable time.monotonic()."""
@@ -184,6 +276,24 @@ class PrintRandomCardTest(unittest.TestCase):
         with mock.patch.object(mb, "_print_image"), mock.patch.object(mb, "FEED_LINES", 9):
             mb.print_random_card(printer, None, None, 9)
         self.assertEqual(printer.textln.call_args_list, [mock.call("")] * 9)
+
+    def test_feed_lines_zero_feeds_nothing(self):
+        open(os.path.join(self.folder(10), "a.bmp"), "w").close()
+        printer = mock.MagicMock()
+        with mock.patch.object(mb, "_print_image") as print_image, mock.patch.object(mb, "FEED_LINES", 0):
+            mb.print_random_card(printer, None, None, 10)
+        print_image.assert_called_once()
+        printer.textln.assert_not_called()
+        self.dm.assert_not_called()
+
+    def test_default_feed_is_four_lines(self):
+        # The test settings.cfg does not set FEED_LINES
+        self.assertEqual(mb.FEED_LINES, 4)
+
+    def test_nothing_is_fed_when_there_is_no_card(self):
+        printer = mock.MagicMock()
+        mb.print_random_card(printer, None, None, 15)  # missing folder
+        printer.textln.assert_not_called()
 
     def test_only_complete_bmps_are_candidates(self):
         folder = self.folder(7)
