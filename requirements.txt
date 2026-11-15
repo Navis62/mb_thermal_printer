@@ -5,7 +5,8 @@
 requests
 
 # Raspberry Pi program (momir_basic.py)
-python-escpos
+# [serial]: python-escpos only pulls in pyserial through this extra
+python-escpos[serial]
 RPi.GPIO
 luma.oled
 Pillow

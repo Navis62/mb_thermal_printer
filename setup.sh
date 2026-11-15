@@ -39,7 +39,25 @@ SETTINGS_FILE="${APP_DIR}/settings.cfg"
 
 step() { printf '\n=== %s ===\n' "$1"; }
 warn() { printf 'Warning: %s\n' "$1" >&2; }
-has_apt_package() { apt-cache policy "$1" 2>/dev/null | grep -q 'Candidate: [^(]'; }
+# LC_ALL=C: apt-cache output is localized ("Candidat :" in French)
+has_apt_package() { LC_ALL=C apt-cache policy "$1" 2>/dev/null | grep -q 'Candidate: [^(]'; }
+
+REQ_TMP=""
+UNIT_TMP=""
+trap 'rm -f "${REQ_TMP}" "${UNIT_TMP}"' EXIT
+
+# systemd splits ExecStart on spaces and the unit is written from these values: refuse unsafe ones now
+case "${APP_DIR}" in
+    *[[:space:]]*)
+        echo "Error: the folder '${APP_DIR}' contains a space, which systemd cannot handle in ExecStart."
+        echo "Move the repository to a path without spaces and run ./setup.sh again."
+        exit 1 ;;
+esac
+case "${USER_NAME}" in
+    ""|*[!A-Za-z0-9._-]*)
+        echo "Error: the user name '${USER_NAME}' has characters that are not safe in a systemd unit."
+        exit 1 ;;
+esac
 
 echo "Installing for user '${USER_NAME}' in ${APP_DIR}"
 
@@ -52,8 +70,8 @@ if ! command -v apt-get > /dev/null; then
     exit 1
 fi
 sudo apt-get update -qq
-# python3-pil: Pillow without compiling it (slow on a Pi Zero 2)
-sudo apt-get install -y python3-venv python3-pip python3-pil i2c-tools
+# python3-pil: Pillow without compiling it (slow on a Pi Zero 2); python3-serial: pyserial
+sudo apt-get install -y python3-venv python3-pip python3-pil python3-serial i2c-tools
 
 # RPi.GPIO: use the distribution package when there is one (no compilation), otherwise
 # pip builds it, which needs a compiler and the Python headers.
@@ -63,6 +81,14 @@ elif has_apt_package python3-rpi-lgpio; then
     sudo apt-get install -y python3-rpi-lgpio
 else
     sudo apt-get install -y python3-dev build-essential
+fi
+
+# Is the RPi.GPIO module already provided by apt (python3-rpi.gpio or python3-rpi-lgpio)?
+# If so, pip must not build or reinstall it.
+if python3 -c 'import RPi.GPIO' > /dev/null 2>&1; then
+    GPIO_FROM_APT=1
+else
+    GPIO_FROM_APT=0
 fi
 
 # ---------------------------------------------------------------------------
@@ -96,7 +122,14 @@ step "[4/6] Python environment"
 cd "${APP_DIR}"
 # --system-site-packages: reuse the apt packages (Pillow, RPi.GPIO) instead of compiling them
 python3 -m venv --system-site-packages .venv
-.venv/bin/pip install -r requirements.txt
+REQUIREMENTS="requirements.txt"
+if [ "${GPIO_FROM_APT}" -eq 1 ]; then
+    echo "RPi.GPIO is provided by apt: not installing it with pip."
+    REQ_TMP="$(mktemp)"
+    grep -vi '^RPi.GPIO' requirements.txt > "${REQ_TMP}" || true
+    REQUIREMENTS="${REQ_TMP}"
+fi
+.venv/bin/pip install -r "${REQUIREMENTS}"
 
 # ---------------------------------------------------------------------------
 # 5. Settings
@@ -117,7 +150,6 @@ fi
 # ---------------------------------------------------------------------------
 step "[6/6] systemd service"
 UNIT_TMP="$(mktemp)"
-trap 'rm -f "${UNIT_TMP}"' EXIT
 # deploy/momir.service is the template: adapt the user, the folder and the Python
 sed -e "s|^User=.*|User=${USER_NAME}|" \
     -e "s|^WorkingDirectory=.*|WorkingDirectory=${APP_DIR}|" \
@@ -138,8 +170,10 @@ cat <<EOF
 
 === Setup complete ===
 Next steps:
-  1. Get the card images into the folder set as IMAGES_DIR in ${SETTINGS_FILE}:
+  1. Get the card images into the folder set as IMAGES_DIR in ${SETTINGS_FILE}
+     (default created by this script: ${HOME}/momir_images, if settings.cfg was new):
        ./scripts/update.sh                       (long on a Pi Zero 2: CONVERT_WORKERS=2 ./scripts/update.sh)
+     This is slow on a Zero 2 (the Atkinson conversion is pure Python): preparing the images on a PC is recommended.
      or prepare them on a PC and copy them over (see "Faster: prepare the images on a PC" in the README).
   2. Check the buttons: if the mana counter climbs by itself, set BUTTONS_ACTIVE_LOW=true in settings.cfg.
   3. Useful commands:
@@ -153,7 +187,7 @@ EOF
 if [ "${ASSUME_YES}" -eq 1 ]; then
     echo "Reboot the Pi when you are ready:  sudo reboot"
 else
-    read -r -p "Reboot now? (y/N) " answer
+    read -r -p "Reboot now? (y/N) " answer || answer=n
     case "${answer}" in
         [yY]*) sudo reboot ;;
         *) echo "Then reboot later with:  sudo reboot" ;;
