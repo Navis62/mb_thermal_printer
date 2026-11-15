@@ -55,7 +55,16 @@ if [ -z "${IMAGES_DIR}" ] || [ -z "${DATA_DIR}" ]; then
     exit 1
 fi
 
+# Interpreter: the repository's .venv (where setup.sh installs the dependencies) when it exists,
+# otherwise python3 from the PATH (may be a shell function, e.g. on Git Bash)
+if [ -x "${ROOT_DIR}/.venv/bin/python" ]; then
+    PY="${ROOT_DIR}/.venv/bin/python"
+else
+    PY="python3"
+fi
+
 echo "=== Momir Basic update ==="
+echo "Python           : ${PY}"
 echo "Images directory : ${IMAGES_DIR}"
 echo "Data directory   : ${DATA_DIR}"
 echo ""
@@ -66,7 +75,7 @@ echo ""
 echo "[1/4] Fetching the list of creature cards from Scryfall..."
 mkdir -p "${DATA_DIR}"
 cd "${SCRIPT_DIR}"
-python3 get_image_urls_from_scryfall.py --data-dir "${DATA_DIR}"
+"${PY}" get_image_urls_from_scryfall.py --data-dir "${DATA_DIR}"
 echo "Image URLs saved to ${DATA_DIR}/creatures_image_urls.json."
 echo ""
 
@@ -77,7 +86,7 @@ echo "[2/4] Downloading new card images to ${IMAGES_DIR}..."
 mkdir -p "${IMAGES_DIR}"
 DOWNLOAD_FAILED=0
 # Failed downloads must not prevent converting the images that did arrive
-python3 download_images_from_scryfall.py --data-dir "${DATA_DIR}" --images-dir "${IMAGES_DIR}" \
+"${PY}" download_images_from_scryfall.py --data-dir "${DATA_DIR}" --images-dir "${IMAGES_DIR}" \
     || DOWNLOAD_FAILED=1
 echo "Image download step finished."
 echo ""
@@ -88,7 +97,7 @@ echo ""
 echo "[3/4] Converting new images to monochrome BMP..."
 
 # CONVERT_WORKERS limits the parallel processes (e.g. CONVERT_WORKERS=2 on a Pi Zero 2)
-python3 convert_images.py --images-dir "${IMAGES_DIR}" --workers "${CONVERT_WORKERS:-$(nproc)}"
+"${PY}" convert_images.py --images-dir "${IMAGES_DIR}" --workers "${CONVERT_WORKERS:-$(nproc)}"
 
 echo "Conversion done."
 echo ""
