@@ -18,7 +18,7 @@ Le README décrit le montage, l'installation et les fichiers : @README.md
   1. `get_image_urls_from_scryfall.py` : données en masse Scryfall (`oracle-cards.jsonl.gz`) vers
      `creatures_image_urls.json`, dans `DATA_DIR` ;
   2. `download_images_from_scryfall.py` : JPG dans `IMAGES_DIR/<cmc>/` (12 fils, saute les cartes déjà converties) ;
-  3. `convert_images.py` : BMP 1 bit de 384 px dans `IMAGES_DIR/<cmc>/converted_files/` (Pillow, Atkinson) ;
+  3. `convert_images.py` : BMP 1 bit de 384 px dans `IMAGES_DIR/<cmc>/converted_files/` (Pillow, Atkinson ; trame de points groupés à 45° en option) ;
   4. supprime les JPG et les fichiers de `DATA_DIR`.
   `scripts/progress.py` : une ligne de progression tous les 5 %.
 - `tests/` : `test_momir_basic.py` (matériel simulé par `sys.modules`), `test_scripts.py`.
@@ -27,7 +27,7 @@ Le README décrit le montage, l'installation et les fichiers : @README.md
 ## Commandes
 
 ```bash
-.venv/Scripts/python.exe -m unittest discover -s tests       # 43 tests, matériel simulé (Pillow + requests dans le .venv)
+python -m unittest discover -s tests                         # 68 tests, matériel simulé (Pillow + requests installés)
 python -m py_compile momir_basic.py scripts/*.py tests/*.py   # syntaxe
 bash -n scripts/update.sh && bash -n setup.sh                 # syntaxe des scripts shell
 node --test .claude/hooks/*.test.mjs                          # tests du garde-fou

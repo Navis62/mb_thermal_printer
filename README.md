@@ -74,7 +74,7 @@ All pins use BOARD numbering (physical pin numbers, not BCM GPIO numbers).
 
 ## Single power supply (optional)
 
-By default the printer (9 V) and the Pi (5 V) have their own adapter. You can run both from the 9 V adapter by adding a step-down (buck) converter that makes the 5 V for the Pi. No soldering is needed if you pick a module with screw terminals. This works on the author's build, with a Raspberry Pi Zero 2 W.
+By default the printer (9 V) and the Pi (5 V) have their own adapter. You can run both from the 9 V adapter by adding a step-down (buck) converter that makes the 5 V for the Pi. No soldering is needed if you pick a module with screw terminals. This was built for, and works on the author's build with, a **Raspberry Pi Zero 2 W**. A Raspberry Pi 4 can draw up to 3 A at 5 V, which together with the printer exceeds this 3 A adapter and converter: keep separate supplies for a Pi 4, or size the converter and the adapter up accordingly.
 
 ```
 9 V adapter ──┬──────────────► thermal printer (+ and −)
@@ -106,14 +106,14 @@ By default the printer (9 V) and the Pi (5 V) have their own adapter. You can ru
    | Capacitor, long leg (`+`) and short leg (side marked with a stripe, `−`) | `IN+` and `IN−`, in the same terminals as the input wires |
    | `OUT+` / `OUT−` | The Pi's 5 V power (see below) |
 
-   The grounds of the Pi, the printer and the converter are already common, so there is nothing to add. **Never connect the 9 V to the Pi.**
+   To split the 9 V between the printer and the converter you can put two wires in each terminal of the DC jack adapter, or use a terminal block or lever connectors. The grounds of the Pi, the printer and the converter are already common, so there is nothing to add. **Never connect the 9 V to the Pi.**
 4. **Power the Pi from the converter.** Preferred: cut a micro-USB cable, strip the two power wires (check which is `+` (usually red) and `−` (usually black) with the multimeter), and put them in `OUT+` / `OUT−`. The Pi keeps its own protection that way. Alternative: Dupont wires to the GPIO header, 5 V on pin 4 and GND on pin 9 (not pin 6, used by the OLED); this bypasses the Pi's protection, so the 5.1 V setting must be exact.
 5. **First start.** Disconnect any other power from the Pi, then plug the 9 V adapter: the printer powers up and the Pi boots. Print a card to test.
 
-**Check the supply holds.** The Pi must not see an under-voltage while the printer heats. After several prints in a row, run on the Pi:
+**Check the supply holds.** The Pi must not see an under-voltage while the printer heats. The 5.1 V you set was measured with nothing connected: measure it again between `OUT+` and `OUT−` while the Pi runs and the printer prints a dark card; it should stay above about 4.9 V. After several prints in a row, also run on the Pi:
 
 ```bash
-vcgencmd get_throttled     # 0x0 means no under-voltage was detected
+vcgencmd get_throttled     # 0x0 means no under-voltage has happened since boot
 ```
 
 If the Pi reboots or the OLED flickers when printing: put the capacitor closer to the module, shorten the power wires, or add a second 1000 µF capacitor in parallel.
@@ -132,7 +132,7 @@ cd mb_thermal_printer
 
 It installs the system packages, enables the I²C bus and the serial port (and turns the serial login console off), gives your user access to the hardware, creates the Python virtual environment, creates `settings.cfg`, and installs the systemd service so the program starts on boot — with your user name and folder filled in. It is safe to run again. Run it as your normal user, not with `sudo`; it asks for your password when needed, and offers to reboot at the end (needed the first time).
 
-Then get the card images (step 3 below, or prepare them on a PC) and, if the mana counter climbs by itself, set `BUTTONS_ACTIVE_LOW=true` in `settings.cfg`.
+`settings.cfg` is created with the images in `~/momir_images` and the data in `~/momir_data`. Then get the card images (step 3 below, or prepare them on a PC; the conversion is plain Python and takes hours on a Pi Zero 2, so preparing the images on a PC is recommended) and, if the mana counter climbs by itself, set `BUTTONS_ACTIVE_LOW=true` in `settings.cfg`.
 
 The sections below describe the same steps one by one, in case you prefer to do them by hand.
 
@@ -191,6 +191,10 @@ DATA_DIR=/home/pi/momir_data
 # Optional: set to true if your buttons connect the pin to GND when pressed, e.g.
 # the counter climbs by itself with the default wiring (default: false)
 # BUTTONS_ACTIVE_LOW=true
+
+# Optional: blank lines fed after each card so that its bottom clears the printer and can be torn off
+# (default: 4). Raise it if the end of the card stays inside the printer.
+# FEED_LINES=4
 ```
 
 ### 3. Download and convert card images
@@ -279,7 +283,7 @@ If you previously used a `@reboot` crontab entry, remove it (`crontab -e`) so th
 | `scripts/update.sh` | All-in-one update script: list creatures, download images, convert to BMP |
 | `scripts/get_image_urls_from_scryfall.py` | Downloads the Scryfall bulk data and writes the creature list (`creatures_image_urls.json`) |
 | `scripts/download_images_from_scryfall.py` | Downloads card images in parallel; skips cards already converted |
-| `scripts/convert_images.py` | Converts downloaded JPGs to 384 px wide monochrome BMPs: sharpened, contrast-stretched, then Atkinson-dithered, which prints much better on thermal paper than Floyd-Steinberg (Pillow, parallel; `--workers N` to limit the processes) |
+| `scripts/convert_images.py` | Converts downloaded JPGs to 384 px wide monochrome BMPs: sharpened, contrast-stretched, then Atkinson-dithered, which prints much better on thermal paper than Floyd-Steinberg (`DITHER` in the script switches to a 45° clustered-dot halftone screen; Pillow, parallel; `--workers N` to limit the processes) |
 | `scripts/cmc_dirs.py` | Finds files in the CMC folders (`0/` to `16/`) only, so other folders of `IMAGES_DIR` are never converted or cleaned up |
 | `scripts/progress.py` | Log-friendly progress lines used by the download and conversion scripts |
 | `deploy/momir.service` | systemd unit that starts `momir_basic.py` on boot |
@@ -295,3 +299,7 @@ If you previously used a `@reboot` crontab entry, remove it (`crontab -e`) so th
 Released under the [MIT License](LICENSE). Copyright (c) 2026 Alexander Johansson (original project) and Pierrick Visentin (fork modifications).
 
 The bundled font (`assets/FredokaOne-Regular.ttf`) is distributed under its own license (SIL Open Font License), not the MIT license above.
+
+## Support
+
+If this project is useful at your table, you can [buy me a coffee](https://buymeacoffee.com/navis62) to help me keep building and improving projects.
