@@ -34,6 +34,8 @@ A Raspberry Pi-powered thermal printer that plays [Momir Basic](https://mtg.fand
 | 1 | 32 GB micro SD card |
 | — | Dupont cables |
 
+*Optional:* to run everything from a single power adapter, see [Single power supply](#single-power-supply-optional) for the extra parts (step-down module, capacitor).
+
 ---
 
 ## Wiring
@@ -56,7 +58,7 @@ All pins use BOARD numbering (physical pin numbers, not BCM GPIO numbers).
 | Pi TX (GPIO14) → printer **RX** | Pin 8 | `/dev/serial0`, 9600 baud. This is the only data line the program needs |
 | Pi RX (GPIO15) ← printer **TX** | Pin 10 | Not used by the program (it never reads from the printer); wire it anyway if you like |
 | Thermal printer GND | GND | Shared ground with Pi |
-| Thermal printer VH | 9 V supply | Separate from Pi power |
+| Thermal printer VH | 9 V supply | Separate from Pi power by default; see [Single power supply](#single-power-supply-optional) to share one adapter |
 
 > The GPIO pinout is the same on all 40-pin Raspberry Pi models (Pi 3, Pi 4, Pi Zero 2 W, etc.).
 
@@ -67,6 +69,54 @@ All pins use BOARD numbering (physical pin numbers, not BCM GPIO numbers).
 <p align="center">
   <img src="assets/photo-inside.jpg" alt="Inside of the box: Raspberry Pi, breadboard, printer and wiring" width="560">
 </p>
+
+---
+
+## Single power supply (optional)
+
+By default the printer (9 V) and the Pi (5 V) have their own adapter. You can run both from the 9 V adapter by adding a step-down (buck) converter that makes the 5 V for the Pi. No soldering is needed if you pick a module with screw terminals. This works on the author's build, with a Raspberry Pi Zero 2 W.
+
+```
+9 V adapter ──┬──────────────► thermal printer (+ and −)
+              │
+              └─ [1000 µF] ─┬─► LM2596 IN ─► OUT 5.1 V ─► Raspberry Pi (micro-USB)
+                            └─ across IN+ / IN−
+```
+
+**Extra parts** (instead of the 9 V 2 A adapter and the Pi's own power cable):
+
+| Qty | Component |
+|-----|-----------|
+| 1 | LM2596 step-down (buck) module, 3 A, adjustable output. Choose one with **screw terminals** |
+| 1 | 9 V **3 A** regulated DC adapter, 5.5 mm × 2.1 mm, centre-positive |
+| 1 | 1000 µF electrolytic capacitor, **16 V or more** (a 6.3 V or 10 V one will fail on 9 V) |
+| 1 | Micro-USB cable you can cut (or Dupont wires, see below) |
+| 1 | Multimeter (needed once, to set the 5 V) |
+
+**Wiring and setup:**
+
+1. **Check the adapter.** With a multimeter, its output should read about 9 to 9.6 V with nothing connected, with the **centre positive**. A cheap unregulated "9 V" adapter can give 12 V or more and would damage the printer.
+2. **Set the converter first, with the Pi unplugged.** Connect only the 9 V adapter to the module's `IN+` / `IN−`, measure `OUT+` / `OUT−`, and turn the blue trimmer slowly until you read **5.1 V** (never above 5.25 V). The output can overshoot while you adjust it, which is why the Pi must not be connected yet. Then unplug the adapter.
+3. **Wire everything with the adapter unplugged:**
+
+   | From | To |
+   |------|----|
+   | 9 V adapter `+` | `IN+` of the module **and** `+` of the printer |
+   | 9 V adapter `−` | `IN−` of the module **and** `−` of the printer |
+   | Capacitor, long leg (`+`) and short leg (side marked with a stripe, `−`) | `IN+` and `IN−`, in the same terminals as the input wires |
+   | `OUT+` / `OUT−` | The Pi's 5 V power (see below) |
+
+   The grounds of the Pi, the printer and the converter are already common, so there is nothing to add. **Never connect the 9 V to the Pi.**
+4. **Power the Pi from the converter.** Preferred: cut a micro-USB cable, strip the two power wires (check which is `+` (usually red) and `−` (usually black) with the multimeter), and put them in `OUT+` / `OUT−`. The Pi keeps its own protection that way. Alternative: Dupont wires to the GPIO header, 5 V on pin 4 and GND on pin 9 (not pin 6, used by the OLED); this bypasses the Pi's protection, so the 5.1 V setting must be exact.
+5. **First start.** Disconnect any other power from the Pi, then plug the 9 V adapter: the printer powers up and the Pi boots. Print a card to test.
+
+**Check the supply holds.** The Pi must not see an under-voltage while the printer heats. After several prints in a row, run on the Pi:
+
+```bash
+vcgencmd get_throttled     # 0x0 means no under-voltage was detected
+```
+
+If the Pi reboots or the OLED flickers when printing: put the capacitor closer to the module, shorten the power wires, or add a second 1000 µF capacitor in parallel.
 
 ---
 
