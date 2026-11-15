@@ -1,4 +1,6 @@
 import argparse
+import functools
+import math
 import os
 import sys
 from concurrent.futures import ProcessPoolExecutor
@@ -17,6 +19,12 @@ CONTRAST_LUT = [
     round(min(1.0, max(0.0, (v - BLACK_POINT) / (WHITE_POINT - BLACK_POINT))) ** GAMMA * 255)
     for v in range(256)
 ]
+
+# Dithering of the mid-tones: "atkinson" (error diffusion, the default: judged best on real prints)
+# or "halftone" (45 degree clustered-dot screen: smoother in dark areas, but a visible dot pattern).
+DITHER = "atkinson"
+# Period of the halftone screen, in dots (larger = coarser dots)
+HALFTONE_PERIOD = 6
 
 # Suffix of files being written; renamed to .bmp once complete
 PARTIAL_SUFFIX = ".part"
@@ -101,6 +109,38 @@ def atkinson_dither(gray):
     return Image.frombytes("L", (width, height), bytes(out)).convert("1", dither=Image.Dither.NONE)
 
 
+@functools.lru_cache(maxsize=8)
+def _screen_thresholds(width, height, period):
+    """Return, per pixel, the grey level below which the pixel prints black (45 degree dot screen).
+
+    The screen function peaks at the centre of each dot cell. Ranking its values over the whole
+    image makes the thresholds evenly spread over 0..255, so grey level maps linearly to coverage.
+    """
+    scale = 2 * math.pi / period
+    spot = [math.cos(scale * (x + y)) + math.cos(scale * (x - y))
+            for y in range(height) for x in range(width)]
+    order = sorted(range(len(spot)), key=spot.__getitem__)   # cell edges first, cell centres last
+    thresholds = [0.0] * len(spot)
+    for rank, index in enumerate(order):
+        # half a step inside (0, 255): pure black always prints black, pure white always stays white
+        thresholds[index] = 255 * (rank + 0.5) / len(spot)
+    return thresholds
+
+
+def halftone_dither(gray, period=HALFTONE_PERIOD):
+    """Return a 1-bit copy of a greyscale image, rendered with a 45 degree clustered-dot screen."""
+    width, height = gray.size
+    thresholds = _screen_thresholds(width, height, period)
+    data = gray.tobytes()
+    bits = bytes(0 if data[i] < thresholds[i] else 255 for i in range(width * height))
+    return Image.frombytes("L", (width, height), bits).convert("1", dither=Image.Dither.NONE)
+
+
+def dither(gray):
+    """Return the 1-bit version of a greyscale image, using the DITHER method."""
+    return atkinson_dither(gray) if DITHER == "atkinson" else halftone_dither(gray)
+
+
 def convert_image(jpg):
     """Convert one JPG to a 1-bit BMP, PRINTER_WIDTH dots wide; return None or an error message.
 
@@ -118,7 +158,7 @@ def convert_image(jpg):
             # dithering below speckles the card frame and makes the text unreadable.
             gray = gray.filter(ImageFilter.UnsharpMask(radius=1.2, percent=150, threshold=2))
             gray = gray.point(CONTRAST_LUT)
-            atkinson_dither(gray).save(tmp, format="BMP")
+            dither(gray).save(tmp, format="BMP")
         os.replace(tmp, out)
         return None
     except Exception as e:

@@ -8,9 +8,11 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
 
+import cmc_dirs
 import convert_images
 import download_images_from_scryfall as download
 import get_image_urls_from_scryfall as urls
@@ -63,6 +65,12 @@ class IsValidCreatureTest(unittest.TestCase):
         self.assertFalse(urls.is_valid_creature(make_card(type_line="Enchantment — Saga // Enchantment Creature — Kami")))
         self.assertTrue(urls.is_valid_creature(make_card(type_line="Creature — Human Wizard // Creature — Human Insect")))
         self.assertTrue(urls.is_valid_creature(make_card(type_line="Creature — Human Peasant // Sorcery — Adventure")))
+
+    def test_is_creature_front_looks_at_the_front_face_only(self):
+        self.assertTrue(urls.is_creature_front(make_card()))
+        self.assertTrue(urls.is_creature_front(make_card(type_line="Creature — Elf // Land")))
+        self.assertFalse(urls.is_creature_front(make_card(type_line="Land // Creature — Elf")))
+        self.assertFalse(urls.is_creature_front({}))
 
     def test_arena_rebalanced_name(self):
         self.assertFalse(urls.is_valid_creature(make_card(name="A-Grizzly Bears")))
@@ -211,6 +219,97 @@ class ConvertImagesTest(unittest.TestCase):
             self.assertFalse(os.path.exists(convert_images.bmp_path(jpg) + convert_images.PARTIAL_SUFFIX))
 
 
+class CmcDirsTest(unittest.TestCase):
+    def test_only_all_digit_names_are_cmc_folders(self):
+        for name in ("0", "7", "16"):
+            self.assertTrue(cmc_dirs.is_cmc_dir(name), name)
+        for name in ("assets", ".git", "", "1a", "-1", "٣"):
+            self.assertFalse(cmc_dirs.is_cmc_dir(name), name)
+
+    def test_glob_returns_sorted_matches_in_cmc_folders_only(self):
+        with tempfile.TemporaryDirectory() as root:
+            wanted = []
+            for folder, name in (("2", "b.jpg"), ("2", "a.jpg"), ("10", "c.jpg"), ("assets", "w.jpg"), (".git", "x.jpg")):
+                os.makedirs(os.path.join(root, folder), exist_ok=True)
+                path = os.path.join(root, folder, name)
+                open(path, "w").close()
+                if folder in ("2", "10"):
+                    wanted.append(path)
+            open(os.path.join(root, "2", "notes.txt"), "w").close()
+            self.assertEqual(cmc_dirs.glob_in_cmc_dirs(root, "*.jpg"), sorted(wanted))
+
+
+class ConvertEndToEndTest(unittest.TestCase):
+    def make_card(self, root, cmc, name, size=(488, 680)):
+        os.makedirs(os.path.join(root, str(cmc)), exist_ok=True)
+        path = os.path.join(root, str(cmc), name + ".jpg")
+        # Black top half, white bottom half: both must stay pure after dithering
+        img = Image.new("L", size, 255)
+        img.paste(0, (0, 0, size[0], size[1] // 2))
+        img.convert("RGB").save(path, quality=95)
+        return path
+
+    def test_height_keeps_the_aspect_ratio_whatever_the_source_size(self):
+        with tempfile.TemporaryDirectory() as root:
+            for name, size, height in (("Small", (100, 140), 538), ("Wide", (800, 400), 192)):
+                jpg = self.make_card(root, 3, name, size)
+                self.assertIsNone(convert_images.convert_image(jpg))
+                with Image.open(convert_images.bmp_path(jpg)) as img:
+                    self.assertEqual((img.mode, img.size), ("1", (384, height)), name)
+
+    def test_printed_card_keeps_black_and_white_areas(self):
+        with tempfile.TemporaryDirectory() as root:
+            jpg = self.make_card(root, 4, "Contrast")
+            convert_images.convert_image(jpg)
+            with Image.open(convert_images.bmp_path(jpg)) as img:
+                img = img.convert("L")
+                top = img.crop((10, 10, 374, 200)).getextrema()
+                bottom = img.crop((10, 340, 374, 520)).getextrema()
+            self.assertEqual(top, (0, 0))
+            self.assertEqual(bottom, (255, 255))
+
+    def test_convert_all_converts_everything_and_leaves_no_part_file(self):
+        import contextlib, io
+        with tempfile.TemporaryDirectory() as root:
+            jpgs = [self.make_card(root, 1, "A", (100, 140)), self.make_card(root, 5, "B", (100, 140))]
+            stale = os.path.join(root, "1", "converted_files")
+            os.makedirs(stale)
+            stale = os.path.join(stale, "Old.bmp.part")
+            open(stale, "w").close()
+            with contextlib.redirect_stdout(io.StringIO()):
+                failures = convert_images.convert_all(root, workers=1)
+            self.assertEqual(failures, 0)
+            for jpg in jpgs:
+                self.assertTrue(os.path.isfile(convert_images.bmp_path(jpg)))
+            self.assertFalse(os.path.exists(stale))
+            leftovers = [f for _, _, files in os.walk(root) for f in files if f.endswith(convert_images.PARTIAL_SUFFIX)]
+            self.assertEqual(leftovers, [])
+            self.assertEqual(convert_images.find_pending(root), [])
+
+    def test_convert_all_reports_failures_and_still_converts_the_rest(self):
+        import contextlib, io
+        with tempfile.TemporaryDirectory() as root:
+            good = self.make_card(root, 2, "Good", (100, 140))
+            bad = os.path.join(root, "2", "Bad.jpg")
+            with open(bad, "w") as f:
+                f.write("not a jpeg")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                failures = convert_images.convert_all(root, workers=1)
+            self.assertEqual(failures, 1)
+            self.assertTrue(os.path.isfile(convert_images.bmp_path(good)))
+            self.assertFalse(os.path.exists(convert_images.bmp_path(bad)))
+            self.assertIn("Failed to convert", out.getvalue())
+
+    def test_convert_all_with_nothing_to_do_returns_zero(self):
+        import contextlib, io
+        with tempfile.TemporaryDirectory() as root:
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(convert_images.convert_all(root, workers=1), 0)
+            self.assertIn("No new images", out.getvalue())
+
+
 class AtkinsonDitherTest(unittest.TestCase):
     def dither(self, level, size=(32, 32)):
         return convert_images.atkinson_dither(Image.new("L", size, level))
@@ -232,6 +331,46 @@ class AtkinsonDitherTest(unittest.TestCase):
         pixels = list(self.dither(128, (64, 64)).getdata())
         black = pixels.count(0) / len(pixels)
         self.assertTrue(0.35 < black < 0.65, black)
+
+
+class HalftoneDitherTest(unittest.TestCase):
+    def halftone(self, level, size=(48, 48)):
+        return convert_images.halftone_dither(Image.new("L", size, level))
+
+    def black_ratio(self, image):
+        pixels = list(image.getdata())
+        return pixels.count(0) / len(pixels)
+
+    def test_returns_a_one_bit_image_of_the_same_size(self):
+        out = self.halftone(128, (50, 17))
+        self.assertEqual((out.mode, out.size), ("1", (50, 17)))
+
+    def test_pure_black_and_white_stay_pure(self):
+        self.assertEqual(self.halftone(0).getextrema(), (0, 0))
+        self.assertEqual(self.halftone(255).getextrema(), (255, 255))
+
+    def test_coverage_follows_the_grey_level(self):
+        ratios = [self.black_ratio(self.halftone(level)) for level in (230, 180, 128, 75, 25)]
+        self.assertEqual(ratios, sorted(ratios))                 # darker input, more black dots
+        self.assertTrue(0.4 < ratios[2] < 0.6, ratios[2])        # mid grey is about half black
+
+    def test_dots_are_clustered(self):
+        # a mid-tone is rendered as blobs, not as isolated pixels: most black pixels have a black neighbour
+        image = self.halftone(100, (60, 60)).convert("L")
+        w, h = image.size
+        px = image.load()
+        black = [(x, y) for x in range(1, w - 1) for y in range(1, h - 1) if px[x, y] == 0]
+        touching = sum(1 for x, y in black if 0 in (px[x + 1, y], px[x - 1, y], px[x, y + 1], px[x, y - 1]))
+        self.assertGreater(touching / len(black), 0.7)
+
+    def test_dither_follows_the_DITHER_setting(self):
+        gray = Image.new("L", (32, 32), 100)
+        with mock.patch.object(convert_images, "DITHER", "atkinson"):
+            self.assertEqual(list(convert_images.dither(gray).getdata()),
+                             list(convert_images.atkinson_dither(gray).getdata()))
+        with mock.patch.object(convert_images, "DITHER", "halftone"):
+            self.assertEqual(list(convert_images.dither(gray).getdata()),
+                             list(convert_images.halftone_dither(gray).getdata()))
 
 
 class ProgressTests(unittest.TestCase):
